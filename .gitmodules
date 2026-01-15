@@ -1,0 +1,6 @@
+[submodule "rms-frontend"]
+	path = rms-frontend
+	url = https://github.com/tafuri-pierluigi/rms-frontend.git
+[submodule "rms-backend"]
+	path = rms-backend
+	url = https://github.com/tafuri-pierluigi/rms-backend.git
