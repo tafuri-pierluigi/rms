@@ -1,0 +1,23 @@
+BE*
+- Creare logica di business sotto ogni tenant/store, partendo dal prodotto, poi magazzino, ordini, vendite...
+
+
+FE
+- creare rotta base per l'accesso al gestionale vero è proprio, permesso solo all'admin e agli utenti sotto (non per superadmin che siamo noi!)
+- sidebar toggleabile (apri/chiudi)
+- altezza del logo/scritta admin panel in sidebar deve essere uguale a quella dell'header
+- in admin panel, creare vista per gli store di ogni tenant:
+    - permettere creazione di store solo al superadmin* 
+    - permettere di assegnare uno store ad uno user del suo tenant all'admin*
+- in admin panel, creare voce in sidebar (come per user e tenant) per gestire ruoli e permessi, sia lato admin che superadmin, in base ai permessi*
+- IN generale, nelle pagine di login, permettere accesso via username oltre che per email*
+
+NB*: Le modifiche con * richiedono modifiche anche lato BE
+
+
+DB
+
+
+PROXY / rms-platform (be+fe+db+prx)
+- spostare fuori in rms (non rms-backend) la cartella con la config di nginx e rimuovere da compose di rms-backend il volume
+- creare un compose esterno che punti ai sottomoduli per fare l'avvio di tutti i moduli insieme (backend postgres frontend nginx)
