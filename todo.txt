@@ -19,5 +19,4 @@ DB
 
 
 PROXY / rms-platform (be+fe+db+prx)
-- spostare fuori in rms (non rms-backend) la cartella con la config di nginx e rimuovere da compose di rms-backend il volume
-- creare un compose esterno che punti ai sottomoduli per fare l'avvio di tutti i moduli insieme (backend postgres frontend nginx)
+- spostare fuori in rms da /rms-backend la cartella con la config di nginx e creare un compose in root per fare la build e l'avvio di tutti i moduli (backend postgres frontend nginx)
