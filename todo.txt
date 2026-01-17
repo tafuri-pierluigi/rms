@@ -3,7 +3,6 @@ BE*
 
 
 FE
-- creare rotta base per l'accesso al gestionale vero è proprio, permesso solo all'admin e agli utenti sotto (non per superadmin che siamo noi!)
 - sidebar toggleabile (apri/chiudi)
 - altezza del logo/scritta admin panel in sidebar deve essere uguale a quella dell'header
 - in admin panel, creare vista per gli store di ogni tenant:
