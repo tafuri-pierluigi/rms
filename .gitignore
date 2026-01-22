@@ -1,2 +1,5 @@
 .env
 *.log
+
+# Claude Code - istruzioni personali (non committare)
+CLAUDE.local.md
