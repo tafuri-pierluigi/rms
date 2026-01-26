@@ -1,8 +1,8 @@
 # RMS - Analisi Completa Problemi e Criticità
 
-> Documento generato: 26 Gennaio 2026
-> Versione: 1.3 (EVO-001 Completato - Sistema Permessi Dinamici)
-> Status: In Aggiornamento - Sistema Permessi Online
+> Documento aggiornato: 26 Gennaio 2026
+> Versione: 1.4 (Authentication, UI Layout, Token Refresh Fixes)
+> Status: Aggiornato - Security & UX Improvements Complete
 
 ---
 
@@ -29,9 +29,9 @@
 
 | Severità | Conteggio | Risolti | Rimanenti |
 |----------|-----------|---------|-----------|
-| 🔴 CRITICAL | 12 | 8 | 4 |
-| 🟠 HIGH | 18 | 6 | 12 |
-| 🟡 MEDIUM | 22 | 2 | 20 |
+| 🔴 CRITICAL | 12 | 10 | 2 |
+| 🟠 HIGH | 18 | 8 | 10 |
+| 🟡 MEDIUM | 22 | 3 | 19 |
 | 🟢 LOW | 12 | 0 | 12 |
 
 ### Top 5 Priorità Assolute
@@ -43,6 +43,9 @@
 5. ~~**Endpoint `/stores/:id/users` mancante**~~ ✅ RISOLTO
 6. ~~**Sistema Permessi Frontend Mancante (EVO-001)**~~ ✅ RISOLTO (26 Gennaio)
 7. ~~**TenantId Protection (Interceptor)**~~ ✅ RISOLTO (26 Gennaio)
+8. ~~**User/Tenant Inactive Login Validation**~~ ✅ RISOLTO (26 Gennaio)
+9. ~~**Token Refresh Loop Infinito (FE-001)**~~ ✅ RISOLTO (26 Gennaio)
+10. ~~**Permissions 403 Admin (BUG-002)**~~ ✅ RISOLTO (26 Gennaio)
 
 ---
 
@@ -184,6 +187,60 @@
   - Action button visibility controllata ✓
   - Router guard su requiresPermissions ✓
 
+### ✅ FIX-010: User & Tenant Inactive Login Validation
+- **Issue:** BUG-002 (new), Security: inactive users could login
+- **Problema:** Backend non controllava `isActive` al login - utenti disattivati potevano accedere
+- **Soluzione:** Aggiunto controllo in auth.service.ts:login()
+- **File Modificati:**
+  - `rms-backend/src/auth/auth.service.ts:50-56` - Aggiunto controllo `user.isActive` e `tenant.isActive`
+- **Test Results (26/01/2026):**
+  - Active user login → ✓ Success
+  - Inactive user login → ✓ 401 "User account is inactive"
+  - Tenant inactive login → ✓ 401 "Tenant is inactive"
+
+### ✅ FIX-011: Login Error Handling & Axios Auth Skip
+- **Issue:** FE-001, FE-003 (parte di)
+- **Problema:**
+  - Login fallisce → axios interceptor redirecta automaticamente (hard refresh)
+  - Errore di login non visibile all'utente
+- **Soluzione:**
+  - Aggiunto skip per `/auth/*` endpoints in axios interceptor
+  - Migliorato error message extraction dal backend
+- **File Modificati:**
+  - `rms-frontend/src/api/axios.ts:28-32` - Aggiunto isAuthRequest check
+  - `rms-frontend/src/stores/auth.store.ts:145-153` - Migliorato error extraction
+  - `rms-frontend/src/views/LoginView.vue` - Aggiunto error alert
+  - `rms-frontend/src/views/app/AppLoginView.vue` - Aggiunto error alert
+- **Test Results (26/01/2026):**
+  - Invalid credentials → ✓ Error visibile in UI
+  - User inactive → ✓ "User account is inactive" in UI
+  - Tenant inactive → ✓ "Tenant is inactive" in UI
+
+### ✅ FIX-012: UI Layout Refactor - Fixed Header & Push Sidebar
+- **Issue:** FIX-UI-001, UX improvements
+- **Problema:**
+  - Header non fisso, scrollava via
+  - Sidebar copriva il contenuto (non lo spingeva)
+  - Sidebar-brand non necessario
+- **Soluzione:**
+  - Header position: fixed (z-index 99)
+  - Sidebar spinge contenuto (margin-left quando open)
+  - Rimosso sidebar-brand da entrambe le interfacce
+  - Rinominato `components/layout/` → `components/admin/` per clarità
+- **File Modificati:**
+  - `components/app/AppLayout.vue` - Fixed header, push sidebar
+  - `components/app/AppHeader.vue` - Position fixed
+  - `components/app/AppSidebar.vue` - Rimosso brand, push content
+  - `components/admin/AppLayout.vue` - Same layout fixes
+  - `components/admin/AppHeader.vue` - Position fixed
+  - `components/admin/AppSidebar.vue` - Rimosso brand
+  - `router/index.ts` - Import update per admin folder
+- **Test Results (26/01/2026):**
+  - Header rimane fisso durante scroll ✓
+  - Sidebar open → contenuto spinto a destra ✓
+  - Sidebar close → contenuto prende larghezza piena ✓
+  - Nessun sidebar-brand in entrambe le aree ✓
+
 ---
 
 ## Risultati Test Endpoint
@@ -272,52 +329,17 @@
 
 ---
 
-## Problemi Noti
-
-> Problemi già identificati in `problemi.txt`
-
-### ~~BUG-001: Endpoint Mancante `/stores/:id/users`~~ ✅ RISOLTO
-- **Severità:** 🔴 CRITICAL → ✅ RISOLTO
-- **Soluzione:** Implementati POST /stores/:id/users e DELETE /stores/:id/users/:userId
-- **Vedi:** FIX-004
-
-### BUG-002: Permissions 403 per Admin
-- **Severità:** 🔴 CRITICAL
-- **File:** `rms-backend/src/permissions/permissions.controller.ts`
-- **Descrizione:** Admin riceve 403 su GET `/api/permissions`
-- **Causa:** Manca permission `permissions:read` per ruolo ADMIN
-- **Fix Required:**
-  1. Aggiungere `permissions:read` ad ADMIN nel seed
-  2. Implementare logica permessi "visibili" vs "assegnabili"
-
-### BUG-003: Form si Chiude al Click Esterno
-- **Severità:** 🟠 HIGH
+### EVO-001: Form si Chiude dirtettamente al Click del icona X (dovrebbe chiedere conferma) (PAUSED)
+- **Severità:** 🟡 MEDIUM
 - **File:** `rms-frontend/src/components/common/BaseModal.vue`
 - **Descrizione:** Click di Cancel o della X per uscire chiude modal direttamente e perde dati form
 - **Fix Required:** Chiedere conferma all'utente "Perderai i dati.., sei sicuro?"
 
-### BUG-004: Manca Associazione Ruolo a User
-- **Severità:** 🟠 HIGH
-- **File:** `rms-frontend/src/components/users/UserForm.vue`
-- **Descrizione:** Non c'è modo di associare un ruolo a un utente esistente
-- **Fix Required:** Aggiungere UI per gestione ruoli utente -> in realtà da users, selezionando un utente e aggiornandolo, c'è una checkbox per associarli uno o piu ruoli.
-
-### BUG-005: Manca Associazione Store a User (PAUSED)
-- **Severità:** 🟠 HIGH
-- **File:** `rms-frontend/src/views/UsersView.vue`
-- **Descrizione:** Non c'è modo di associare uno store a un utente, se non facendo una PATCH a http://localhost/api/users/:id con:
-{
-	"storeIds": [
-		"47c32989-d4bc-44a1-986d-a478bf5a5230"
-	]
-}
-- **Fix Required:** Aggiungere UI per gestione store utente -> in realtà da users, selezionando un utente e aggiornandolo, c'è una checkbox per aggiugnerlo a uno o più stores!
-
-### BUG-006: Logica Limiti Store Errata (PAUSED)
+### FIX-001: Logica Limiti Store/User (PAUSED)
 - **Severità:** 🟡 MEDIUM
-- **File:** `rms-backend/src/stores/stores.service.ts`
-- **Descrizione:** Il limite store ha senso solo se admin crea store, ma logica attuale non è chiara
-- **Discussione:** Definire chi può creare store e con quali limiti
+- **File:** `rms-backend/src/stores/users.service.ts`
+- **Descrizione:** Il limite ha senso solo per la creazione di user da parte di admin
+- **Discussione:** applicare fix su users (rivedere su store se ha senso visto che è il supradmin a creare/configurare nuovi store(attualmente blocca anche il superadmin)) con proposta in tentan.entity di chatgpt (non su stores! ma su user al più)
 
 ---
 
@@ -325,13 +347,7 @@
 
 ### !! Per SEC-002, SEC-005 e SEC-006, sto valutando la possibilità di usare caddy invece di nginx se ha una configurazione più chiara e veloce!
 
-### ~~SEC-001: CORS Permissivo (origin: true)~~ ✅ RISOLTO
-- **Severità:** 🔴 CRITICAL → ✅ RISOLTO
-- **Soluzione:** Implementata whitelist CORS configurabile via env var `CORS_ORIGINS`
-- **Vedi:** FIX-005
-- **Nota:** Per domini dinamici per tenant, estendere la logica nel callback origin
-
-### SEC-002: HTTPS/SSL Non Configurato
+### SEC-001: HTTPS/SSL Non Configurato
 - **Severità:** 🔴 CRITICAL
 - **File:** `nginx/conf.d/default.conf`, `nginx/ssl/` (vuota)
 - **Rischio:** Man-in-the-middle, credenziali JWT in chiaro
@@ -445,16 +461,17 @@
 
 ## Bug Frontend
 
-### FE-001: Token Refresh Loop Infinito
-- **Severità:** 🔴 CRITICAL
-- **File:** `rms-frontend/src/api/axios.ts:23-55`
+### ~~FE-001: Token Refresh Loop Infinito~~ ✅ RISOLTO
+- **Severità:** 🔴 CRITICAL → ✅ RISOLTO
+- **File:** `rms-frontend/src/api/axios.ts:28-32`
 - **Descrizione:** Se refresh fallisce, loop infinito di retry
-- **Impatto:** Memory leak, blocco UI
-- **Fix:** Contatore retry o check validity prima di retry
+- **Soluzione:** Aggiunto skip per `/auth/*` endpoints in axios interceptor
+- **Impatto Risolto:** No loop infinito su login fallito
+- **Vedi:** FIX-011
 
 ### FE-002: Memory Leak in AppSidebar
 - **Severità:** 🟠 HIGH
-- **File:** `rms-frontend/src/components/layout/AppSidebar.vue:23-29`
+- **File:** `rms-frontend/src/components/app/AppSidebar.vue` e `rms-frontend/src/components/admin/AppSidebar.vue`
 - **Codice:**
   ```typescript
   const isActive = (name: string) => computed(() => {
@@ -462,12 +479,15 @@
   })
   ```
 - **Fix:** Usare computed map invece di factory function
+- **Nota:** Folder rinominato da `components/layout/` a `components/admin/` (FIX-012)
 
 ### FE-003: Race Condition Login Navigation
-- **Severità:** 🟠 HIGH
+- **Severità:** 🟠 HIGH → 🟡 MEDIUM (Parzialmente Risolto)
 - **File:** `rms-frontend/src/views/app/AppLoginView.vue:38-46`
 - **Descrizione:** Router push non aspetta guard completion
 - **Impatto:** Redirect prima di authStore.init()
+- **Risoluzione Parziale:** FIX-011 ha migliorato il flusso di login error handling, riducendo race condition
+- **Nota:** Ancora da validare completamente con flush() nelle transizioni di router
 
 ### FE-004: Store Filtering Inconsistente
 - **Severità:** 🟡 MEDIUM
@@ -501,7 +521,7 @@
 - **File:** `rms-frontend/src/router/index.ts:107-166`
 - **Descrizione:** Guard chiama `isSuperAdmin` che può throw su JWT invalido
 
-### FE-010: Email Validation Regex Permissiva
+### FE-010: Email Validation Regex Permissiva (va migliorata tutta la validazione nei form, dto e il tipo in db in caso)
 - **Severità:** 🟢 LOW
 - **File:** `rms-frontend/src/views/app/AppLoginView.vue:19`
 - **Regex:** `!/^[^\s@]+@[^\s@]+\.[^\s@]+$/`
@@ -510,11 +530,11 @@
 ### FE-011: Console.log in Production
 - **Severità:** 🟢 LOW
 - **Files:** auth.store.ts, AppLoginView.vue, LoginView.vue
-- **Fix:** Rimuovere o usare conditional logging
+- **Fix:** Rimuovere o usare conditional logging (poi li tolgo)
 
 ---
 
-## Problemi Infrastruttura
+## Problemi Infrastruttura (Principalmente Nginx -> cambierei volentieri con caddy forse)
 
 ### INFRA-001: SSL Directory Vuota
 - **Severità:** 🔴 CRITICAL
@@ -550,12 +570,12 @@
 ### INFRA-006: NODE_ENV Incoerente
 - **Severità:** 🟢 LOW
 - **File:** `docker-compose.yml:28`
-- **Problema:** Default `production` ma .env ha `development`
+- **Problema:** Default `production` ma .env ha `development` (ha un senso nella mia mente, fidati!)
 
 ### INFRA-007: Backend Porta Esposta
 - **Severità:** 🟢 LOW
 - **File:** `docker-compose.yml:26`
-- **Descrizione:** Porta 3000 esposta direttamente, dovrebbe essere solo via nginx
+- **Descrizione:** Porta 3000 esposta direttamente, dovrebbe essere solo via nginx (in dev la tengo aperta)
 
 ---
 
@@ -571,9 +591,6 @@
 - **Frontend:** Tenta fetch permissions per gestione ruoli custom
 - **Risultato:** 403 Forbidden
 
-### ~~INC-003: Endpoint Store-User Mancante~~ ✅ RISOLTO
-- **Vedi:** FIX-004
-
 ### INC-004: Validazione Password Non Allineata
 - **Backend:** Solo `@MinLength(8)`
 - **Frontend:** Solo `password.length < 8`
@@ -586,6 +603,7 @@
 ### UX-001: Dual-Area Confusa
 - **Descrizione:** Due aree separate (`/` tenant e `/admin` superadmin) senza indicatore chiaro
 - **Impatto:** Utente non capisce in quale area si trova
+- Sicuramente non ha senso avere due login visto che c'è il redirect basato sul ruolo! in prod non ci sarà la vista per il superadmin ma verrà hostata localmente o limitata all'accesso!
 
 ### UX-002: Loading States Mancanti
 - **Descrizione:** Molte pagine non mostrano skeleton/spinner durante fetch
@@ -596,7 +614,7 @@
 - **Impatto:** Utente non sa cosa correggere
 
 ### UX-004: Modal Overflow Mobile
-- **Descrizione:** Form in modal possono overflowre su schermi piccoli
+- **Descrizione:** Form in modal possono overfloware su schermi piccoli
 
 ### UX-005: Nessun Feedback Logout
 - **Descrizione:** Logout silenzioso, redirect senza messaggio
@@ -628,90 +646,3 @@
 - **Backend/Nginx:** No `/api/v1/` prefix per versioning
 
 ---
-
-## Piano di Remediation
-
-### Fase 1: Critical Fixes (Sprint 1)
-
-| ID | Issue | Effort | Owner | Status |
-|----|-------|--------|-------|--------|
-| SEC-001 | Fix CORS origin | 1h | Backend | ✅ DONE |
-| SEC-002 | Configurare HTTPS | 4h | DevOps | TODO |
-| BE-001 | Race condition store quota | 4h | Backend | TODO |
-| BE-002 | Race condition user quota | 2h | Backend | TODO |
-| FE-001 | Token refresh loop | 2h | Frontend | TODO |
-| BUG-001 | Endpoint store/users | 4h | Backend | ✅ DONE |
-| BUG-002 | Permissions 403 admin | 2h | Backend | ✅ DONE |
-| TEST-006 | Password in response | 1h | Backend | ✅ DONE |
-| TEST-004 | Endpoint /auth/me | 1h | Backend | ✅ DONE |
-
-### Fase 2: High Priority (Sprint 2)
-
-| ID | Issue | Effort | Owner |
-|----|-------|--------|-------|
-| SEC-003 | Token storage strategy | 4h | Frontend |
-| SEC-004 | Rimuovere credenziali hardcoded | 1h | Frontend |
-| BE-003 | JWT blacklist logout | 8h | Backend |
-| FE-002 | Memory leak sidebar | 2h | Frontend |
-| FE-003 | Race condition login | 2h | Frontend |
-| BUG-003 | Modal click outside | 1h | Frontend |
-| BUG-004 | UI ruolo utente | 8h | Full Stack |
-| BUG-005 | UI store utente | 8h | Full Stack |
-| INFRA-002 | Nginx health check | 1h | DevOps |
-
-### Fase 3: Medium Priority (Sprint 3-4)
-
-- Centralizzare isSuperAdmin
-- Validazione password forte
-- Form dirty state tracking
-- Error boundaries
-- Database indexes
-- Log persistenza
-- CSP header
-
-### Fase 4: Low Priority (Backlog)
-
-- API versioning
-- Request cancellation
-- Caching strategy
-- Enum role names
-- Console.log cleanup
-
----
-
-## Appendice: File Analizzati
-
-### Backend (55+ file)
-- src/main.ts
-- src/app.module.ts
-- src/auth/* (8 file)
-- src/users/* (6 file)
-- src/tenants/* (6 file)
-- src/roles/* (6 file)
-- src/permissions/* (6 file)
-- src/stores/* (6 file)
-- src/common/guards/* (4 file)
-- src/common/decorators/* (4 file)
-- src/database/* (8 file)
-- src/config/* (2 file)
-
-### Frontend (50+ file)
-- src/main.ts
-- src/router/index.ts
-- src/stores/* (5 file)
-- src/api/* (7 file)
-- src/views/* (12 file)
-- src/components/* (15+ file)
-- src/types/* (5 file)
-- vite.config.ts
-- tsconfig.*.json
-
-### Infrastruttura
-- docker-compose.yml
-- nginx/nginx.conf
-- nginx/conf.d/default.conf
-- .env, .env.example
-
----
-
-*Documento da aggiornare ad ogni fix implementato*
