@@ -1,7 +1,8 @@
 # CLAUDE.md - RMS Technical Documentation
 
 > Guida tecnica completa per Claude Code (claude.ai/code)
-> Ultimo aggiornamento: 22 Gennaio 2026
+> Ultimo aggiornamento: 26 Gennaio 2026
+> Status: EVO-001 Completato - Sistema Permessi Dinamici Implementato
 
 ---
 
@@ -372,6 +373,51 @@ async findAll(): Promise<Entity[]> {
 }
 ```
 
+### TenantBodyInterceptor - Centralized TenantId Protection
+
+**File**: `rms-backend/src/common/interceptors/tenant-body.interceptor.ts`
+
+**Purpose**: Automatically strip `tenantId` from request body for non-SuperAdmin users, preventing unauthorized tenant context changes.
+
+**Security Pattern**:
+```typescript
+// For non-SuperAdmin:
+- POST /users with body { tenantId: "other-tenant" }
+  → Interceptor removes tenantId → Forced to own tenant ✓
+
+- PATCH /stores with body { tenantId: "other-tenant" }
+  → Interceptor removes tenantId → TenantId preserved ✓
+
+// For SuperAdmin:
+- POST /users with body { tenantId: "specific-tenant" }
+  → tenantId NOT removed → Can assign to any tenant ✓
+```
+
+**Execution Order in app.module.ts**:
+```typescript
+// After Guards (which identify user + set request.tenantId)
+// BEFORE Pipes/DTO validation (which would reject missing tenantId field)
+[TenantGuard] → [TenantBodyInterceptor] → [DTO Validation] → [Controller]
+```
+
+**Service Implementation**:
+```typescript
+async update(id: string, updateStoreDto: UpdateStoreDto): Promise<Store> {
+  const store = await this.findOne(id);
+
+  // Exclude tenantId from destructuring if undefined (interceptor removed it)
+  const { tenantId, ...updateData } = updateStoreDto;
+  Object.assign(store, updateData);
+
+  // Only update if explicitly provided (SuperAdmin can change tenant)
+  if (tenantId !== undefined) {
+    store.tenantId = tenantId;
+  }
+
+  return this.storeRepository.save(store);
+}
+```
+
 ---
 
 ## Backend Technical Details
@@ -431,9 +477,11 @@ src/
 │
 ├── stores/
 │   ├── stores.module.ts
-│   ├── stores.controller.ts # Missing: POST /:id/users endpoint!
-│   ├── stores.service.ts    # Quota checking
-│   ├── dto/...
+│   ├── stores.controller.ts # CRUD + user association endpoints
+│   ├── stores.service.ts    # Quota checking, user management
+│   ├── dto/
+│   │   ├── create-store.dto.ts
+│   │   └── add-user-to-store.dto.ts
 │   └── entities/
 │       └── store.entity.ts
 │
@@ -448,6 +496,10 @@ src/
 │   │   ├── permissions.decorator.ts  # @Permissions('users:read')
 │   │   ├── current-user.decorator.ts # @CurrentUser()
 │   │   └── current-tenant.decorator.ts
+│   ├── interceptors/
+│   │   └── tenant-body.interceptor.ts # Strips tenantId from body for non-SuperAdmin
+│   ├── utils/
+│   │   └── auth.utils.ts             # isSuperAdmin(), canAccessTenant(), PROTECTED_ROLES
 │   └── filters/
 │       └── http-exception.filter.ts
 │
@@ -484,11 +536,16 @@ Examples:
 
 ### Default Roles & Permissions (from seed)
 
-| Role | Permissions | Scope |
-|------|-------------|-------|
-| SUPER_ADMIN | ALL | Global (tenantId = null) |
-| ADMIN | users:*, stores:*, roles:read | Per-tenant |
-| USER | users:read (self) | Per-tenant |
+| Role | Permissions | Count | Scope |
+|------|-------------|-------|-------|
+| SUPER_ADMIN | users:*,tenants:*,roles:*,permissions:*,stores:* | 20 | Global (tenantId = null) |
+| ADMIN | users:*,roles:*,permissions:read,stores:read,stores:update | 11 | Per-tenant |
+| USER | (none) | 0 | Per-tenant (read-only with no permissions) |
+
+**Format**: `resource:action` (e.g., `users:create`, `stores:delete`)
+
+**Resources**: users, tenants, roles, permissions, stores
+**Actions**: create, read, update, delete
 
 ### Quota System
 
@@ -528,21 +585,51 @@ export const useAuthStore = defineStore('auth', () => {
   const accessToken = ref<string | null>(localStorage.getItem('accessToken'));
   const refreshToken = ref<string | null>(localStorage.getItem('refreshToken'));
   const user = ref<User | null>(null);
+  const userPermissions = ref<string[]>([]); // NEW - flat permissions array
 
   // Computed
   const isAuthenticated = computed(() => !!accessToken.value);
   const isSuperAdmin = computed(() => parseJwt(accessToken.value)?.tenantId === null);
 
+  // Permission Helpers (NEW)
+  function hasPermission(permission: string): boolean {
+    if (isSuperAdmin.value) return true; // SuperAdmin bypasses all
+    return userPermissions.value.includes(permission);
+  }
+
+  function hasAnyPermission(permissions: string[]): boolean {
+    if (isSuperAdmin.value) return true;
+    return permissions.some((p) => userPermissions.value.includes(p));
+  }
+
+  function hasAllPermissions(permissions: string[]): boolean {
+    if (isSuperAdmin.value) return true;
+    return permissions.every((p) => userPermissions.value.includes(p));
+  }
+
   // Actions
   async function login(email: string, password: string): Promise<boolean>;
   async function logout(): Promise<void>;
   async function refreshAccessToken(): Promise<boolean>;
-  function setTokens(access: string, refresh: string): void;
-  function init(): void; // Called on app mount
+  async function setTokens(access: string, refresh: string): Promise<void>;
+  async function init(): Promise<void>; // Called on app mount
+  private async function fetchUserDetails(): Promise<void>; // Fetch permissions from /auth/me
 
-  return { accessToken, user, isAuthenticated, isSuperAdmin, login, logout, ... };
+  return {
+    accessToken, user, userPermissions,
+    isAuthenticated, isSuperAdmin,
+    hasPermission, hasAnyPermission, hasAllPermissions,
+    login, logout, ...
+  };
 });
 ```
+
+**Permission Flow**:
+1. User logs in → JWT contains only roles
+2. `setTokens()` calls `fetchUserDetails()` → GET /auth/me returns flattened permissions
+3. `userPermissions` ref populated with string[] (e.g., `["users:read", "stores:create"]`)
+4. UI components call `hasPermission()` helpers for O(1) checks
+5. Page refresh → `init()` calls `fetchUserDetails()` again
 
 ### API Client Pattern
 
@@ -739,7 +826,8 @@ add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 | POST | `/stores` | `stores:create` | Quota checked |
 | PATCH | `/stores/:id` | `stores:update` | |
 | DELETE | `/stores/:id` | `stores:delete` | |
-| **POST** | **`/stores/:id/users`** | - | **MISSING!** |
+| POST | `/stores/:id/users` | `stores:update` | Add user to store |
+| DELETE | `/stores/:id/users/:userId` | `stores:update` | Remove user from store |
 
 ---
 
@@ -749,21 +837,21 @@ add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
 ### Critical Issues
 
-| ID | Issue | Workaround |
-|----|-------|------------|
-| SEC-001 | CORS `origin: true` | Change to whitelist in main.ts |
-| SEC-002 | No HTTPS | Generate SSL certs, configure nginx |
-| BUG-001 | `/stores/:id/users` 404 | Implement endpoint |
-| BUG-002 | Permissions 403 for Admin | Add `permissions:read` to ADMIN role |
-| BE-001 | Race condition quota | Use DB constraint or locking |
-| FE-001 | Token refresh loop | Add retry counter |
+| ID | Issue | Status |
+|----|-------|--------|
+| ~~SEC-001~~ | ~~CORS `origin: true`~~ | ✅ FIXED - Whitelist via CORS_ORIGINS env |
+| SEC-002 | No HTTPS | TODO - Generate SSL certs, configure nginx |
+| ~~BUG-001~~ | ~~`/stores/:id/users` 404~~ | ✅ FIXED - Endpoints implemented |
+| ~~BUG-002~~ | ~~Permissions 403 for Admin~~ | ✅ FIXED - DB reset with correct seed |
+| BE-001 | Race condition quota | TODO - Use DB constraint or locking |
+| FE-001 | Token refresh loop | TODO - Add retry counter |
 
 ### Feature Gaps
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| User-Role association UI | Missing | Can only set on create |
-| User-Store association UI | Missing | No UI exists |
+| User-Role association UI | Partial | Available in user form |
+| User-Store association UI | Partial | Checkbox in user form |
 | Form dirty state | Missing | Data lost on accidental close |
 | JWT blacklist on logout | Missing | Token valid for 15min after logout |
 

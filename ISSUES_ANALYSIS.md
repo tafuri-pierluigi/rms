@@ -1,8 +1,8 @@
 # RMS - Analisi Completa Problemi e Criticità
 
-> Documento generato: 22 Gennaio 2026
-> Versione: 1.2 (aggiornato con fix completati)
-> Status: In Lavorazione
+> Documento generato: 26 Gennaio 2026
+> Versione: 1.3 (EVO-001 Completato - Sistema Permessi Dinamici)
+> Status: In Aggiornamento - Sistema Permessi Online
 
 ---
 
@@ -29,9 +29,9 @@
 
 | Severità | Conteggio | Risolti | Rimanenti |
 |----------|-----------|---------|-----------|
-| 🔴 CRITICAL | 12 | 5 | 7 |
-| 🟠 HIGH | 18 | 4 | 14 |
-| 🟡 MEDIUM | 22 | 1 | 21 |
+| 🔴 CRITICAL | 12 | 8 | 4 |
+| 🟠 HIGH | 18 | 6 | 12 |
+| 🟡 MEDIUM | 22 | 2 | 20 |
 | 🟢 LOW | 12 | 0 | 12 |
 
 ### Top 5 Priorità Assolute
@@ -41,6 +41,8 @@
 3. **HTTPS/SSL mancante** - Credenziali in chiaro
 4. ~~**PermissionsGuard non funziona correttamente**~~ ✅ RISOLTO
 5. ~~**Endpoint `/stores/:id/users` mancante**~~ ✅ RISOLTO
+6. ~~**Sistema Permessi Frontend Mancante (EVO-001)**~~ ✅ RISOLTO (26 Gennaio)
+7. ~~**TenantId Protection (Interceptor)**~~ ✅ RISOLTO (26 Gennaio)
 
 ---
 
@@ -119,19 +121,83 @@
   - `canAccessTenant(user, tenantId)` - verifica accesso a tenant
   - `PROTECTED_ROLES` - costante ruoli protetti
 
+### ✅ FIX-008: TenantBodyInterceptor - Multi-Tenant Context Protection
+- **Issue:** SEC-003 (EVO-001 - Tenant Context Management)
+- **Problema:** Non-SuperAdmin poteva cambiare tenantId in PATCH/POST requests via body
+- **Causa Root:** Mancava centralizzazione della protezione tenantId tra controller/service
+- **Soluzione:**
+  - Nuovo `TenantBodyInterceptor` che rimuove tenantId da body per non-SuperAdmin
+  - Service methods proteggono tenantId durante update se undefined
+  - SuperAdmin può comunque cambiare tenantId esplicitamente
+- **File Creato:** `rms-backend/src/common/interceptors/tenant-body.interceptor.ts`
+- **File Modificati:**
+  - `src/app.module.ts` - Registrato APP_INTERCEPTOR
+  - `src/stores/stores.service.ts:update()` - Protection logic
+  - `src/users/users.service.ts:update()` - Protection logic
+  - `src/stores/dto/update-store.dto.ts` - Aggiunto tenantId field
+- **Execution Flow:**
+  ```
+  Request → Guards (set request.tenantId)
+         → TenantBodyInterceptor (strip tenantId for non-SA)
+         → DTO Validation
+         → Controller → Service (check if tenantId !== undefined)
+  ```
+- **Test Results (26/01/2026):**
+  - Admin updates store with foreign tenantId → tenantId preserved ✓
+  - SuperAdmin updates store with new tenantId → tenantId changed ✓
+  - User attempts create with tenantId → 403 Forbidden ✓
+
+### ✅ FIX-009: Sistema Permessi Dinamici Frontend (EVO-001)
+- **Issue:** FE-001, FE-002 (Permission-based UI controls)
+- **Problema:** Frontend non aveva permessi disponibili, UI basata solo su ruoli hardcoded
+- **Soluzione (Hybrid Pattern):**
+  - JWT contiene solo `roles` (leggero)
+  - `/auth/me` ritorna flattened `permissions: string[]`
+  - Frontend store cache in memoria con O(1) lookup
+- **File Creato:**
+  - `rms-frontend/src/api/auth.api.ts:getMe()`
+- **File Modificati:**
+  - `src/stores/auth.store.ts` - Aggiunto:
+    - `userPermissions: ref<string[]>`
+    - `hasPermission()` helper
+    - `hasAnyPermission()` helper
+    - `hasAllPermissions()` helper
+    - `fetchUserDetails()` action
+    - Call in `setTokens()`, `init()`, `logout()`
+  - `src/router/index.ts` - Aggiunto:
+    - `requiresPermissions` e `requiresPermissionsMode` meta fields
+    - Navigation guard che verifica permissions
+  - `src/types/user.types.ts` - Aggiunto `permissions?: string[]`
+  - `src/components/app/AppSidebar.vue` - Dynamic menu via `hasPermission()`
+  - `src/views/StoresView.vue` - Action icons with permission checks
+  - `src/views/UsersView.vue` - Action icons with permission checks
+  - `src/views/RolesView.vue` - Action icons with permission checks
+  - Rimosso: "Manage Users" modal da StoresView (feature solo da User form)
+- **Backend Changes for Frontend:**
+  - `src/auth/auth.service.ts:getMe()` - Ritorna flattened permissions
+  - `src/database/seeds/seed.service.ts` - USER role con 0 permessi
+- **Test Results (26/01/2026):**
+  - SuperAdmin login → 20 permissions ✓
+  - Admin login → 11 permissions ✓
+  - User login → 0 permissions ✓
+  - Sidebar dinamica in base a hasPermission() ✓
+  - Action button visibility controllata ✓
+  - Router guard su requiresPermissions ✓
+
 ---
 
 ## Risultati Test Endpoint
 
 > Test eseguiti il 22/01/2026 con Docker stack running
 
-### Credenziali Testate
+### Credenziali Testate (Aggiornate 26/01/2026)
 
-| Utente | Email | Ruolo | Permessi |
-|--------|-------|-------|----------|
-| SuperAdmin | superadmin@system.com | SUPER_ADMIN | ALL (16 permissions) |
-| Admin Acme | admin@acme.com | ADMIN | users:*, roles:read (5 permissions) |
-| User Acme | user@acme.com | USER | users:read (1 permission) |
+| Utente | Email | Ruolo | Permessi | Tenant |
+|--------|-------|-------|----------|--------|
+| SuperAdmin | superadmin@system.com | SUPER_ADMIN | ALL (20) | null (global) |
+| Admin Acme | admin@acme.com | ADMIN | users:*,roles:*,permissions:read,stores:* (11) | Acme Corp |
+| User Acme | user@acme.com | USER | NONE (0) | Acme Corp |
+| Admin Tech | admin@techinnovations.com | ADMIN | users:*,roles:*,permissions:read,stores:* (11) | Tech Innovations |
 
 ### Risultati Test per Endpoint
 
@@ -234,7 +300,7 @@
 - **Severità:** 🟠 HIGH
 - **File:** `rms-frontend/src/components/users/UserForm.vue`
 - **Descrizione:** Non c'è modo di associare un ruolo a un utente esistente
-- **Fix Required:** Aggiungere UI per gestione ruoli utente
+- **Fix Required:** Aggiungere UI per gestione ruoli utente -> in realtà da users, selezionando un utente e aggiornandolo, c'è una checkbox per associarli uno o piu ruoli.
 
 ### BUG-005: Manca Associazione Store a User (PAUSED)
 - **Severità:** 🟠 HIGH
@@ -245,7 +311,7 @@
 		"47c32989-d4bc-44a1-986d-a478bf5a5230"
 	]
 }
-- **Fix Required:** Aggiungere UI per gestione store utente -> in realtà da users, selezionandone uno di utente e aggiornandolo, x'è una checkbox per aggiugnerlo a uno o più stores!
+- **Fix Required:** Aggiungere UI per gestione store utente -> in realtà da users, selezionando un utente e aggiornandolo, c'è una checkbox per aggiugnerlo a uno o più stores!
 
 ### BUG-006: Logica Limiti Store Errata (PAUSED)
 - **Severità:** 🟡 MEDIUM
@@ -325,6 +391,7 @@
   3. Entrambe creano store → count=2 (limite superato)
 - **Fix:** Database-level constraint o pessimistic locking
 - *Vedi tenant.entity e soluzione proposta da chatgpt
+- !! se la creazione di un nuvo store è in capo al superadmin, questo controllo non serve più. (su user si!)
 
 ### BE-002: Race Condition Quota User
 - **Severità:** 🔴 CRITICAL
