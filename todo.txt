@@ -10,7 +10,7 @@
 
 ## EVOs (Features Future)
 - EVO-002: Business Logic - Creare logica di business sotto ogni tenant/store (prodotto, magazzino, ordini, vendite...)
-- EVO-003: Username Login - Permettere accesso via username oltre che per email
+- EVO-003: Username Login - Permettere accesso via username oltre che per email (-> username uguali in tenant diversi! basiamoci su email che è univoca no!)
 
 ## FIXes UI
 - FIX-UI-001: App-header fisso di larghezza e quando clicco su hamburger si apre sidebar sotto, togliamo sidebar-brand
