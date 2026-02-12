@@ -211,11 +211,15 @@ Password per tutti: `Password123!`
 | FIX-019 | Stock movements API response shape mismatch | 12/02 |
 | FIX-020 | Table rows clickable (UX improvement) | 12/02 |
 | FIX-021 | Size scales auto-open sizes modal | 12/02 |
+| SEC-001 | CORS whitelist configurabile via env | 12/02 |
 | SEC-007 | Password validation con regex complessità (uppercase, lowercase, digit) | 12/02 |
+| BE-003 | JWT blacklist on logout (token-blacklist.service.ts) | 12/02 |
 | BE-006 | Rate limiting ora applicato anche su endpoint pubblici (login, register) | 12/02 |
 | BE-008 | Console.log sostituiti con NestJS Logger nel seed service | 12/02 |
 | BE-009 | Database indexes su User.tenantId, RefreshToken.userId, Permission(resource,action) | 12/02 |
 | INC-004 | Validazione password allineata FE/BE con stessa regex | 12/02 |
+| INFRA-001 | Caddy configurato come reverse proxy con HTTPS automatico | 12/02 |
+| INFRA-002 | Health check su depends_on nel docker-compose | 12/02 |
+| INFRA-003 | Frontend build automatizzato con Dockerfile | 12/02 |
+| DEBT-004 | Transactions nei service products e purchase-orders | 12/02 |
 | DEBT-005 | Enum RoleName creato, stringhe magiche sostituite | 12/02 |
-
-Risolti anche: CORS (SEC-001), JWT blacklist (BE-003), Nginx health check (INFRA-002), Frontend build automatizzato (INFRA-003), Caddy configurato (INFRA-001/SEC-002 parziale), Transactions nei service (DEBT-004).
