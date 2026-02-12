@@ -365,7 +365,22 @@
   const accessToken = ref<string | null>(localStorage.getItem('accessToken'))
   ```
 - **Rischio:** Vulnerabile a XSS - attacker può leggere token
-- **Fix:** Considerare httpOnly cookies o sessionStorage -> preferisco SessionStorage se più semplice
+- **Fix:** Cookie HttpOnly tramite backend proxy
+Configurazione Proxy:
+...
+
+Backend imposta cookie:
+
+javascript// Esempio risposta backend
+Set-Cookie: access_token=xxx; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=900
+Set-Cookie: refresh_token=yyy; HttpOnly; Secure; SameSite=Strict; Path=/api/refresh; Max-Age=604800
+
+Vue fa richieste:
+
+javascript// Axios con credentials
+axios.get('/api/protected', {
+  withCredentials: true  // Invia automaticamente cookie
+})
 
 ### SEC-004: JWT Parsing Senza Validazione
 - **Severità:** 🟡 MEDIUM
@@ -532,6 +547,10 @@
 - **Files:** auth.store.ts, AppLoginView.vue, LoginView.vue
 - **Fix:** Rimuovere o usare conditional logging (poi li tolgo)
 
+
+## Traduzione
+- traduzione testi interfaccia in italiano (attuale solo inglese) con i18n
+
 ---
 
 ## Problemi Infrastruttura (Principalmente Nginx -> cambierei volentieri con caddy forse)
@@ -567,15 +586,11 @@
   - Backend: 0.11 req/s (100 req/900s)
 - **Risultato:** Nginx limiter inutile
 
-### INFRA-006: NODE_ENV Incoerente
-- **Severità:** 🟢 LOW
-- **File:** `docker-compose.yml:28`
-- **Problema:** Default `production` ma .env ha `development` (ha un senso nella mia mente, fidati!)
 
-### INFRA-007: Backend Porta Esposta
+### INFRA-006: Backend Porta Esposta
 - **Severità:** 🟢 LOW
 - **File:** `docker-compose.yml:26`
-- **Descrizione:** Porta 3000 esposta direttamente, dovrebbe essere solo via nginx (in dev la tengo aperta)
+- **Descrizione:** Porta 3000 esposta direttamente, dovrebbe essere solo via nginx (-> in dev la tengo aperta)
 
 ---
 

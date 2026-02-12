@@ -1,9 +1,16 @@
-## EVOs (Features Future)
-- EVO-001: Business Logic - Creare logica di business sotto ogni tenant/store (prodotto, magazzino, ordini, vendite...)
+EVO: Implementare HTTPS/SSL (nginx configurazione, per ora certificati self signed per dev) (poi faremo letsencrypt+dominio per prod)
+EVO: Creare configurazione parallela in caddy, da avviare al posto di nginx. (vorrei vedere se conviene passare a caddy...)
 
-## Traduzione
-- traduzione testi interfaccia in italiano (attuale solo inglese) con i18n
+Servire Frontend con vite (attualmente servito da nginx (vedi compose)). creare dockerfile per frontend.
 
-## FIXes Backend/Infrastructure
-- FIX-HTTPS: Implementare HTTPS/SSL (nginx configurazione, certificati self signed per dev, letsencrypt+dominio per prod)
-- FIX-TOKEN-BLACKLIST: JWT blacklist on logout (token still valid for 15min!)
+FIX: TOKEN-BLACKLIST: JWT blacklist on logout (token still valid for 15min!)
+
+FIX: Nginx Non Aspetta Backend Health
+- **Severità:** 🟠 HIGH
+- **File:** `docker-compose.yml:14-15`
+- **Problema:**
+  ```yaml
+  depends_on:
+    - backend  # Manca condition: service_healthy
+  ```
+- **Impatto:** Nginx può avviarsi prima che backend sia pronto (502 errors)
