@@ -57,11 +57,6 @@
 - **Descrizione:** In dev, client può inviare `X-Is-SuperAdmin: true`
 - **Fix:** Settare sempre header fissi anche in dev
 
-#### SEC-007: Password Validation Debole
-- **Severità:** 🟡 MEDIUM
-- **Problema:** Solo validazione lunghezza minima (8 char), no complessità
-- **Fix:** Aggiungere regex per uppercase, lowercase, numeri, simboli
-
 ### Bug Backend
 
 #### BE-001: Race Condition Quota Store
@@ -81,18 +76,9 @@
 - **File:** `rms-backend/src/auth/auth.service.ts`
 - **Descrizione:** `userAgent` e `ipAddress` definiti in entity ma mai popolati
 
-#### BE-006: Rate Limiting Skip su Endpoint Pubblici
-- **Severità:** 🟡 MEDIUM
-- **Descrizione:** Endpoint pubblici (login, register) saltano rate limiting
-- **Rischio:** Brute force possibile
-
 #### BE-007: Type Casting con `as any`
 - **Severità:** 🟢 LOW
 - **Descrizione:** Uso di `as any` in vari service, fix con proper typing
-
-#### BE-008: Console.log invece di Logger
-- **Severità:** 🟢 LOW
-- **File:** `rms-backend/src/database/seeds/seed.service.ts`
 
 ### Bug Frontend
 
@@ -150,9 +136,6 @@
 
 #### INC-001: Risposta Login vs Refresh Diversa
 - **Descrizione:** `login()` ritorna user+tokens, `refresh()` solo tokens
-
-#### INC-004: Validazione Password Non Allineata
-- **Descrizione:** Backend e frontend validano solo lunghezza, nessuna complessità
 
 ### UX
 
@@ -228,5 +211,11 @@ Password per tutti: `Password123!`
 | FIX-019 | Stock movements API response shape mismatch | 12/02 |
 | FIX-020 | Table rows clickable (UX improvement) | 12/02 |
 | FIX-021 | Size scales auto-open sizes modal | 12/02 |
+| SEC-007 | Password validation con regex complessità (uppercase, lowercase, digit) | 12/02 |
+| BE-006 | Rate limiting ora applicato anche su endpoint pubblici (login, register) | 12/02 |
+| BE-008 | Console.log sostituiti con NestJS Logger nel seed service | 12/02 |
+| BE-009 | Database indexes su User.tenantId, RefreshToken.userId, Permission(resource,action) | 12/02 |
+| INC-004 | Validazione password allineata FE/BE con stessa regex | 12/02 |
+| DEBT-005 | Enum RoleName creato, stringhe magiche sostituite | 12/02 |
 
-Risolti anche: CORS (SEC-001), JWT blacklist (BE-003), Nginx health check (INFRA-002), Frontend build automatizzato (INFRA-003), Caddy configurato (INFRA-001/SEC-002 parziale), Database indexes (BE-009), Role names enum (DEBT-005), Transactions nei service (DEBT-004).
+Risolti anche: CORS (SEC-001), JWT blacklist (BE-003), Nginx health check (INFRA-002), Frontend build automatizzato (INFRA-003), Caddy configurato (INFRA-001/SEC-002 parziale), Transactions nei service (DEBT-004).
