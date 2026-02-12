@@ -18,11 +18,11 @@
 
 ### Priorità Aperte
 
-1. **HTTPS/SSL in produzione** - Configurare dominio + Let's Encrypt (Caddy pronto)
-2. **Race condition quota** - DB constraint o locking su creazione user/store
-3. **Token storage in localStorage** - Migrare a HttpOnly cookie
-4. **Form dirty state** - Warning su navigazione con modifiche non salvate
-5. **Content-Security-Policy** - Header CSP mancante
+1. **HTTPS in dev** - Abilitare auto_https in Caddy (self-signed) per sviluppo locale
+2. **HTTPS in produzione** - Configurare dominio + Let's Encrypt (Caddy pronto)
+3. **Race condition quota** - DB constraint o locking su creazione user/store
+4. **Token storage in localStorage** - Migrare a HttpOnly cookie
+5. **Form dirty state** - Warning su navigazione con modifiche non salvate
 
 ---
 
@@ -30,10 +30,10 @@
 
 ### Sicurezza
 
-#### SEC-001: HTTPS/SSL in Produzione
-- **Severità:** 🔴 CRITICAL
-- **Stato:** Caddy configurato e pronto, serve dominio reale per Let's Encrypt automatico
-- **Note:** In dev funziona su HTTP, in produzione Caddy gestisce HTTPS automaticamente
+#### SEC-001: HTTPS/SSL
+- **Severità:** 🟠 HIGH
+- **Dev:** Caddy ha `auto_https off` nel Caddyfile. Rimuovere e usare `localhost` (senza `http://`) per self-signed automatico
+- **Prod:** Serve dominio reale, Caddy gestisce Let's Encrypt automaticamente
 
 #### SEC-003: Token Storage in localStorage
 - **Severità:** 🟠 HIGH
@@ -46,11 +46,6 @@
 - **File:** `rms-frontend/src/stores/auth.store.ts`
 - **Descrizione:** `parseJwt()` decodifica ma non verifica firma
 - **Nota:** JWT verificato server-side, frontend non dovrebbe fidarsi dei claim
-
-#### SEC-005: Content-Security-Policy Mancante
-- **Severità:** 🟡 MEDIUM
-- **Rischio:** Vulnerabile a XSS injection
-- **Fix:** Aggiungere CSP header in Caddy
 
 #### SEC-006: Dev Mode Permette Header Arbitrari
 - **Severità:** 🟡 MEDIUM
@@ -223,3 +218,4 @@ Password per tutti: `Password123!`
 | INFRA-003 | Frontend build automatizzato con Dockerfile | 12/02 |
 | DEBT-004 | Transactions nei service products e purchase-orders | 12/02 |
 | DEBT-005 | Enum RoleName creato, stringhe magiche sostituite | 12/02 |
+| SEC-005 | Content-Security-Policy header configurato in Caddy | 12/02 |
