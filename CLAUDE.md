@@ -1,8 +1,8 @@
 # CLAUDE.md - RMS Technical Documentation
 
 > Guida tecnica completa per Claude Code (claude.ai/code)
-> Ultimo aggiornamento: 26 Gennaio 2026
-> Status: EVO-001 Completato - Sistema Permessi Dinamici Implementato
+> Ultimo aggiornamento: 12 Febbraio 2026
+> Status: Business Modules Complete - Catalog, Products, Suppliers, Purchase Orders, Inventory
 
 ---
 
@@ -60,6 +60,11 @@ rms/                           # Root repository
 │   │   ├── roles/             # Role definitions
 │   │   ├── permissions/       # Permission definitions
 │   │   ├── stores/            # Store management + quota
+│   │   ├── catalog/           # Brands, Colors, Tags, SizeScales, Collections
+│   │   ├── products/          # Products + Variants + Images
+│   │   ├── suppliers/         # Supplier management
+│   │   ├── purchase-orders/   # Purchase orders + items + receiving
+│   │   ├── inventory/         # Stock levels + movements
 │   │   ├── common/
 │   │   │   ├── guards/        # JwtAuth, Tenant, Permissions, Throttler
 │   │   │   └── decorators/    # @Public, @Permissions, @CurrentUser
@@ -72,11 +77,13 @@ rms/                           # Root repository
     │   ├── main.ts            # Vue app bootstrap
     │   ├── App.vue            # Root component
     │   ├── router/index.ts    # Vue Router + navigation guards
-    │   ├── stores/            # Pinia stores (auth, users, etc.)
-    │   ├── api/               # Axios client + interceptors
-    │   ├── views/             # Page components
-    │   ├── components/        # Reusable components
-    │   └── types/             # TypeScript interfaces
+    │   ├── stores/            # Pinia stores (auth, users, catalog, products, etc.)
+    │   ├── api/               # Axios client + per-module API files
+    │   ├── views/
+    │   │   ├── app/           # Tenant views (catalog/, suppliers, products, PO, inventory)
+    │   │   └── admin/         # SuperAdmin views
+    │   ├── components/        # Reusable (common/, app/, admin/)
+    │   └── types/             # TypeScript interfaces per module
     └── vite.config.ts         # Vite + API proxy config
 ```
 
@@ -502,6 +509,42 @@ src/
 │   └── filters/
 │       └── http-exception.filter.ts
 │
+├── catalog/
+│   ├── catalog.module.ts
+│   ├── catalog.controller.ts  # CRUD for brands, colors, tags, size-scales, collections
+│   ├── catalog.service.ts
+│   ├── dto/                   # Create/Update DTOs per entity
+│   └── entities/              # Brand, Color, Tag, SizeScale, Size, Collection
+│
+├── products/
+│   ├── products.module.ts
+│   ├── products.controller.ts # Products + variants + images
+│   ├── products.service.ts    # Transaction-based create/update
+│   ├── dto/
+│   └── entities/              # Product, ProductVariant, ProductImage, ProductTag
+│
+├── suppliers/
+│   ├── suppliers.module.ts
+│   ├── suppliers.controller.ts
+│   ├── suppliers.service.ts
+│   ├── dto/
+│   └── entities/
+│       └── supplier.entity.ts
+│
+├── purchase-orders/
+│   ├── purchase-orders.module.ts
+│   ├── purchase-orders.controller.ts  # CRUD + receive + status workflow
+│   ├── purchase-orders.service.ts     # Transaction-based operations
+│   ├── dto/
+│   └── entities/              # PurchaseOrder, PurchaseOrderItem
+│
+├── inventory/
+│   ├── inventory.module.ts
+│   ├── inventory.controller.ts  # Stock levels + movements
+│   ├── stock-manager.service.ts # Stock adjustments, counts, initialization
+│   ├── dto/
+│   └── entities/              # ProductStockLevel, StockMovement
+│
 ├── config/
 │   ├── config.module.ts
 │   └── validation.schema.ts  # Joi validation for env vars
@@ -543,8 +586,8 @@ Examples:
 
 **Format**: `resource:action` (e.g., `users:create`, `stores:delete`)
 
-**Resources**: users, tenants, roles, permissions, stores
-**Actions**: create, read, update, delete
+**Resources**: users, tenants, roles, permissions, stores, brands, colors, tags, size-scales, collections, products, suppliers, purchase-orders, inventory
+**Actions**: create, read, update, delete (+ `receive` for purchase-orders)
 
 ### Quota System
 
@@ -569,11 +612,16 @@ maxStores: number;  // Default: 5
 
 ```
 stores/
-├── auth.store.ts      # Authentication state, JWT handling
-├── users.store.ts     # User CRUD, filtering
-├── tenants.store.ts   # Tenant CRUD
-├── roles.store.ts     # Role CRUD, permission assignment
-└── stores.store.ts    # Store CRUD
+├── auth.store.ts              # Authentication state, JWT handling
+├── users.store.ts             # User CRUD, filtering
+├── tenants.store.ts           # Tenant CRUD
+├── roles.store.ts             # Role CRUD, permission assignment
+├── stores.store.ts            # Store CRUD
+├── suppliers.store.ts         # Supplier CRUD
+├── catalog.store.ts           # Brands, Colors, Tags, SizeScales, Collections
+├── products.store.ts          # Products + Variants management
+├── purchase-orders.store.ts   # PO CRUD + receive + status workflow
+└── inventory.store.ts         # Stock levels + movements
 ```
 
 ### Auth Store Pattern
@@ -828,6 +876,86 @@ add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 | POST | `/stores/:id/users` | `stores:update` | Add user to store |
 | DELETE | `/stores/:id/users/:userId` | `stores:update` | Remove user from store |
 
+### Supplier Endpoints
+
+| Method | Endpoint | Permission | Notes |
+|--------|----------|------------|-------|
+| GET | `/suppliers` | `suppliers:read` | Filtered by tenant |
+| GET | `/suppliers/:id` | `suppliers:read` | |
+| POST | `/suppliers` | `suppliers:create` | |
+| PATCH | `/suppliers/:id` | `suppliers:update` | |
+| DELETE | `/suppliers/:id` | `suppliers:delete` | |
+
+### Catalog Endpoints
+
+| Method | Endpoint | Permission | Notes |
+|--------|----------|------------|-------|
+| GET | `/catalog/brands` | `brands:read` | Filtered by tenant |
+| POST | `/catalog/brands` | `brands:create` | |
+| PATCH | `/catalog/brands/:id` | `brands:update` | |
+| DELETE | `/catalog/brands/:id` | `brands:delete` | |
+| GET | `/catalog/colors` | `colors:read` | |
+| POST | `/catalog/colors` | `colors:create` | |
+| PATCH | `/catalog/colors/:id` | `colors:update` | |
+| DELETE | `/catalog/colors/:id` | `colors:delete` | |
+| GET | `/catalog/tags` | `tags:read` | |
+| POST | `/catalog/tags` | `tags:create` | |
+| PATCH | `/catalog/tags/:id` | `tags:update` | |
+| DELETE | `/catalog/tags/:id` | `tags:delete` | |
+| GET | `/catalog/size-scales` | `size-scales:read` | Includes nested sizes |
+| POST | `/catalog/size-scales` | `size-scales:create` | |
+| PATCH | `/catalog/size-scales/:id` | `size-scales:update` | |
+| DELETE | `/catalog/size-scales/:id` | `size-scales:delete` | |
+| POST | `/catalog/size-scales/:id/sizes` | `size-scales:update` | Add size |
+| DELETE | `/catalog/size-scales/:id/sizes/:sizeId` | `size-scales:update` | Remove size |
+| GET | `/catalog/collections` | `collections:read` | |
+| POST | `/catalog/collections` | `collections:create` | |
+| PATCH | `/catalog/collections/:id` | `collections:update` | |
+| DELETE | `/catalog/collections/:id` | `collections:delete` | |
+
+### Product Endpoints
+
+| Method | Endpoint | Permission | Notes |
+|--------|----------|------------|-------|
+| GET | `/products` | `products:read` | Filtered by tenant, includes variants |
+| GET | `/products/:id` | `products:read` | Full detail with relations |
+| POST | `/products` | `products:create` | |
+| PATCH | `/products/:id` | `products:update` | |
+| DELETE | `/products/:id` | `products:delete` | |
+| POST | `/products/:id/variants` | `products:update` | Add variant |
+| PATCH | `/products/:id/variants/:variantId` | `products:update` | Update variant |
+| DELETE | `/products/:id/variants/:variantId` | `products:update` | Delete variant |
+
+### Purchase Order Endpoints
+
+| Method | Endpoint | Permission | Notes |
+|--------|----------|------------|-------|
+| GET | `/purchase-orders` | `purchase-orders:read` | Filtered by tenant |
+| GET | `/purchase-orders/:id` | `purchase-orders:read` | Full detail with items |
+| POST | `/purchase-orders` | `purchase-orders:create` | |
+| PATCH | `/purchase-orders/:id` | `purchase-orders:update` | |
+| DELETE | `/purchase-orders/:id` | `purchase-orders:delete` | |
+| POST | `/purchase-orders/:id/items` | `purchase-orders:update` | Add item |
+| PATCH | `/purchase-orders/:id/items/:itemId` | `purchase-orders:update` | Update item |
+| DELETE | `/purchase-orders/:id/items/:itemId` | `purchase-orders:update` | Delete item |
+| PATCH | `/purchase-orders/:id/status` | `purchase-orders:update` | Change status (auto-receives on Received) |
+| POST | `/purchase-orders/:id/receive` | `purchase-orders:receive` | Receive items + update stock |
+
+### Inventory Endpoints
+
+| Method | Endpoint | Permission | Notes |
+|--------|----------|------------|-------|
+| GET | `/inventory/stock/:variantId/:storeId` | `inventory:read` | Single stock level |
+| GET | `/inventory/stock/store/:storeId` | `inventory:read` | All stock for store |
+| GET | `/inventory/stock/store/:storeId/low` | `inventory:read` | Low stock alerts |
+| POST | `/inventory/stock/initialize` | `inventory:create` | Initialize stock level |
+| POST | `/inventory/stock/adjust` | `inventory:update` | Single adjustment |
+| POST | `/inventory/stock/adjust/batch` | `inventory:update` | Batch adjustment |
+| POST | `/inventory/stock/count` | `inventory:update` | Physical count |
+| POST | `/inventory/stock/count/batch` | `inventory:update` | Batch count |
+| PATCH | `/inventory/stock/:variantId/:storeId/settings` | `inventory:update` | Min/max/reorder settings |
+| GET | `/inventory/movements` | `inventory:read` | Returns `{movements, total}` |
+
 ---
 
 ## Known Issues & Workarounds
@@ -843,7 +971,9 @@ add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 | ~~BUG-001~~ | ~~`/stores/:id/users` 404~~ | ✅ FIXED - Endpoints implemented |
 | ~~BUG-002~~ | ~~Permissions 403 for Admin~~ | ✅ FIXED - DB reset with correct seed |
 | BE-001 | Race condition quota | TODO - Use DB constraint or locking |
-| FE-001 | Token refresh loop | TODO - Add retry counter |
+| ~~FE-001~~ | ~~Token refresh loop~~ | ✅ FIXED - Auth endpoint skip in interceptor |
+| ~~FIX-015~~ | ~~Transaction/FindOne isolation~~ | ✅ FIXED - FindOne after commit |
+| ~~FIX-016~~ | ~~Cascade save on loaded entities~~ | ✅ FIXED - manager.update() |
 
 ### Feature Gaps
 
@@ -853,6 +983,17 @@ add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 | User-Store association UI | Partial | Checkbox in user form |
 | Form dirty state | Missing | Data lost on accidental close |
 | JWT blacklist on logout | Missing | Token valid for 15min after logout |
+| Catalog CRUD views | ✅ Complete | Brands, Colors, Tags, SizeScales, Collections |
+| Products + Variants views | ✅ Complete | Master-detail with variant management |
+| Suppliers views | ✅ Complete | CRUD + detail page |
+| Purchase Orders views | ✅ Complete | CRUD + items + receive + status workflow |
+| Inventory views | ✅ Complete | Stock levels + movements log |
+
+### TypeORM Transaction Gotchas (Documented)
+
+1. **FindOne inside transaction**: `this.findOne()` uses default repository, cannot see uncommitted data. Always call `findOne()` AFTER transaction commits.
+2. **manager.save() on loaded entities**: Causes cascade re-inserts with null FKs. Use `manager.update(Entity, id, fields)` instead for entities loaded outside the transaction.
+3. **Empty string vs undefined**: `@IsUrl()` and unique constraints treat `""` differently from `undefined`/`null`. Always convert empty strings to `undefined` before sending to backend.
 
 ---
 
