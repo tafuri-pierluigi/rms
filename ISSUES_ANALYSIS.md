@@ -1,8 +1,8 @@
 # RMS - Analisi Completa Problemi e Criticità
 
-> Documento aggiornato: 26 Gennaio 2026
-> Versione: 1.4 (Authentication, UI Layout, Token Refresh Fixes)
-> Status: Aggiornato - Security & UX Improvements Complete
+> Documento aggiornato: 12 Febbraio 2026
+> Versione: 2.0 (Business Modules + Bug Fixes)
+> Status: Aggiornato - 5 Business Modules Frontend + Multiple Bug Fixes
 
 ---
 
@@ -29,10 +29,10 @@
 
 | Severità | Conteggio | Risolti | Rimanenti |
 |----------|-----------|---------|-----------|
-| 🔴 CRITICAL | 12 | 10 | 2 |
-| 🟠 HIGH | 18 | 8 | 10 |
-| 🟡 MEDIUM | 22 | 3 | 19 |
-| 🟢 LOW | 12 | 0 | 12 |
+| 🔴 CRITICAL | 14 | 13 | 1 |
+| 🟠 HIGH | 20 | 14 | 6 |
+| 🟡 MEDIUM | 24 | 5 | 19 |
+| 🟢 LOW | 13 | 1 | 12 |
 
 ### Top 5 Priorità Assolute
 
@@ -240,6 +240,109 @@
   - Sidebar open → contenuto spinto a destra ✓
   - Sidebar close → contenuto prende larghezza piena ✓
   - Nessun sidebar-brand in entrambe le aree ✓
+
+> Sessione di fix del 12/02/2026 - Business Modules + Bug Fixes
+
+### ✅ FIX-013: Frontend Views per 5 Moduli Business
+- **Issue:** Feature - Mancavano completamente le viste frontend per i moduli business
+- **Soluzione:** Implementate viste complete per Suppliers, Catalog (Brands, Colors, Tags, Size Scales, Collections), Products, Purchase Orders, Inventory
+- **Files Creati (per modulo):**
+  - **Types:** `supplier.types.ts`, `catalog.types.ts`, `product.types.ts`, `purchase-order.types.ts`, `inventory.types.ts`
+  - **API:** `suppliers.api.ts`, `catalog.api.ts`, `products.api.ts`, `purchase-orders.api.ts`, `inventory.api.ts`
+  - **Stores:** `suppliers.store.ts`, `catalog.store.ts`, `products.store.ts`, `purchase-orders.store.ts`, `inventory.store.ts`
+  - **Views:** `SuppliersView.vue`, `SupplierDetailView.vue`, `BrandsView.vue`, `ColorsView.vue`, `TagsView.vue`, `SizeScalesView.vue`, `CollectionsView.vue`, `ProductsView.vue`, `ProductDetailView.vue`, `PurchaseOrdersView.vue`, `PurchaseOrderDetailView.vue`, `InventoryView.vue`, `StockMovementsView.vue`
+- **Files Modificati:**
+  - `src/types/index.ts`, `src/api/index.ts`, `src/stores/index.ts` - Barrel exports
+  - `src/router/index.ts` - Rotte per tutte le nuove viste
+  - `src/components/app/AppSidebar.vue` - Menu con sezione Catalog collapsible
+
+### ✅ FIX-014: isActive in Create Payloads (5 viste)
+- **Issue:** BUG - Backend CreateDtos non accettano `isActive`, frontend lo inviava causando errori di validazione
+- **Causa Root:** `whitelist: true` in NestJS validation pipe rifiuta proprietà non presenti nel DTO
+- **Soluzione:** Destructuring `const { isActive, ...createData } = formData.value` prima dell'invio
+- **File Modificati:**
+  - `rms-frontend/src/views/app/catalog/BrandsView.vue`
+  - `rms-frontend/src/views/app/catalog/ColorsView.vue`
+  - `rms-frontend/src/views/app/catalog/SizeScalesView.vue`
+  - `rms-frontend/src/views/app/catalog/CollectionsView.vue`
+  - `rms-frontend/src/views/app/ProductsView.vue`
+
+### ✅ FIX-015: TypeORM Transaction/FindOne Isolation Bug
+- **Issue:** 🔴 CRITICAL - Purchase order creation returned 404 "not found" after successful creation
+- **Causa Root:** `this.findOne()` chiamato dentro `dataSource.transaction()` usa il repository di default (fuori transazione), che non vede i dati uncommitted
+- **Soluzione:** Restituire l'ID dalla transazione e chiamare `findOne()` dopo il commit
+- **File Modificati:**
+  - `rms-backend/src/purchase-orders/purchase-orders.service.ts` (5 metodi: create, addItem, updateItem, removeItem, receiveItems)
+  - `rms-backend/src/products/products.service.ts` (4 metodi: create, update, addVariant, updateVariant)
+- **Pattern:**
+  ```typescript
+  // PRIMA (broken)
+  return await this.dataSource.transaction(async (manager) => {
+    await manager.save(entity);
+    return this.findOne(id); // NON vede dati uncommitted!
+  });
+  // DOPO (fixed)
+  const savedId = await this.dataSource.transaction(async (manager) => {
+    const saved = await manager.save(entity);
+    return saved.id;
+  });
+  return this.findOne(savedId); // Vede dati committed ✓
+  ```
+
+### ✅ FIX-016: TypeORM Cascade Save su Entità Caricate Esternamente
+- **Issue:** 🔴 CRITICAL - Adding item to purchase order: 500 `purchase_order_id = null` NOT NULL violation
+- **Causa Root:** `manager.save(PurchaseOrder, po)` su entità caricata fuori transazione scatena cascade re-insert su relazioni (items), con FK null
+- **Soluzione:** Sostituire `manager.save(Entity, loadedObj)` con `manager.update(Entity, id, fields)` per evitare cascate
+- **File Modificati:**
+  - `rms-backend/src/purchase-orders/purchase-orders.service.ts` (4 punti: addItem, updateItem, removeItem, receiveItems)
+- **Pattern:**
+  ```typescript
+  // PRIMA (broken - cascade re-insert)
+  await manager.save(PurchaseOrder, po);
+  // DOPO (fixed - explicit update)
+  await manager.update(PurchaseOrder, po.id, { subtotal, taxAmount, totalCost });
+  ```
+
+### ✅ FIX-017: Brand URL Validation & Barcode Unique Constraint
+- **Issue:** 🟠 HIGH - Brand creation fails with `websiteUrl/logoUrl must be a URL`, Variant creation 500 on empty barcode
+- **Causa Root:**
+  - `@IsUrl()` valida anche stringhe vuote `""` come URL invalido (anche con `@IsOptional()`)
+  - PostgreSQL unique constraint su barcode: `""` non è NULL, quindi duplicati violano il vincolo
+- **Soluzione:** Convertire stringhe vuote a `undefined` prima dell'invio al backend
+- **File Modificati:**
+  - `rms-frontend/src/views/app/catalog/BrandsView.vue` - `websiteUrl/logoUrl: value.trim() || undefined`
+  - `rms-frontend/src/views/app/ProductDetailView.vue` - `barcode: value.trim() || undefined`
+
+### ✅ FIX-018: Purchase Order Auto-Receive on Status "Received"
+- **Issue:** 🟠 HIGH - Setting PO status to "Received" manually didn't auto-receive unreceived items
+- **Problema:** Items non ricevuti rimanevano con `quantityReceived < quantityOrdered`, bloccati per sempre
+- **Soluzione:**
+  - Backend: `updateStatus()` auto-riceve items restanti quando stato → Received, aggiorna stock
+  - Frontend: Nasconde bottone "Change Status" per stati terminali (Received, Cancelled)
+- **File Modificati:**
+  - `rms-backend/src/purchase-orders/purchase-orders.service.ts:updateStatus()` - Auto-receive logic
+  - `rms-frontend/src/views/app/PurchaseOrderDetailView.vue` - v-if condition su Change Status
+
+### ✅ FIX-019: Stock Movements API Response Shape Mismatch
+- **Issue:** 🟠 HIGH - Movements page showed "Invalid Date" with wrong row count
+- **Causa Root:** Backend returns `{ movements: [...], total: N }` ma frontend trattava `response.data` come array diretto
+- **Soluzione:** Estrarre `response.data.movements` nell'API layer
+- **File Modificato:** `rms-frontend/src/api/inventory.api.ts:59`
+
+### ✅ FIX-020: Table Rows Clickable (UX Improvement)
+- **Issue:** 🟡 MEDIUM - Icone "eye" per aprire dettagli poco intuitive
+- **Soluzione:** Resa cliccabile l'intera riga della tabella, rimossa icona eye
+- **File Modificati:**
+  - `rms-frontend/src/components/common/BaseTable.vue` - Aggiunto `clickable` prop, `row-click` emit, `@click.stop` su actions
+  - `rms-frontend/src/views/app/SuppliersView.vue` - Clickable rows → detail
+  - `rms-frontend/src/views/app/ProductsView.vue` - Clickable rows → detail
+  - `rms-frontend/src/views/app/PurchaseOrdersView.vue` - Clickable rows → detail
+  - `rms-frontend/src/views/app/catalog/SizeScalesView.vue` - Clickable rows → sizes modal
+
+### ✅ FIX-021: Size Scales UX - Auto-Open Sizes Modal After Creation
+- **Issue:** 🟢 LOW - Dopo creazione scala taglie, utente doveva cercarla manualmente per aggiungere taglie
+- **Soluzione:** Dopo creazione, auto-refresh lista e apertura automatica del modal taglie
+- **File Modificato:** `rms-frontend/src/views/app/catalog/SizeScalesView.vue`
 
 ---
 
