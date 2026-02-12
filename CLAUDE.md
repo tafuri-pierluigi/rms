@@ -26,7 +26,7 @@
 
 ## Project Overview
 
-**RMS** (Role Management System) is a multi-tenant RBAC system built with:
+**RMS** (Retail Management System) is a multi-tenant managment system for fashion store built with:
 
 | Layer | Technology | Version |
 |-------|------------|---------|
@@ -46,7 +46,6 @@ rms/                           # Root repository
 ├── .env / .env.example        # Environment configuration
 ├── CLAUDE.md                  # This file
 ├── ISSUES_ANALYSIS.md         # Bug tracking & analysis
-├── problemi.txt               # Known issues (Italian)
 ├── nginx/
 │   ├── nginx.conf             # Main Nginx config
 │   ├── conf.d/default.conf    # Virtual hosts & routing
@@ -89,21 +88,21 @@ rms/                           # Root repository
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        NGINX (rms_nginx)                         │
+│                        NGINX (rms_nginx)                        │
 │  Port: 80/443 | Static files + API proxy                        │
-│  Routes: /api/* → backend:3000, /* → /usr/share/nginx/html     │
+│  Routes: /api/* → backend:3000, /* → /usr/share/nginx/html      │
 └────────────────────────────┬────────────────────────────────────┘
                              │ depends_on: backend
                              │
 ┌────────────────────────────▼────────────────────────────────────┐
-│                     BACKEND (rms_backend)                        │
+│                     BACKEND (rms_backend)                       │
 │  Port: 3000 | NestJS REST API                                   │
 │  Guards: Throttler → JwtAuth → Tenant → Permissions             │
 └────────────────────────────┬────────────────────────────────────┘
                              │ depends_on: postgres (healthy)
                              │
 ┌────────────────────────────▼────────────────────────────────────┐
-│                   POSTGRES (rms_postgres)                        │
+│                   POSTGRES (rms_postgres)                       │
 │  Port: 5432 | PostgreSQL 15                                     │
 │  Volume: postgres_data (persistent)                             │
 └─────────────────────────────────────────────────────────────────┘
