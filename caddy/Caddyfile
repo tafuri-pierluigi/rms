@@ -1,0 +1,135 @@
+# =============================================================================
+# RMS - Caddy Reverse Proxy Configuration
+# Equivalent to nginx/conf.d/default.conf + nginx/nginx.conf
+#
+# Vantaggi rispetto a Nginx:
+# - HTTPS automatico (self-signed in dev, Let's Encrypt in prod)
+# - Configurazione molto più semplice
+# - Hot reload nativo
+# - HTTP/2 e HTTP/3 out of the box
+# =============================================================================
+
+# Global options
+{
+	# Dev mode: disable automatic HTTPS entirely
+	# Remove/change this for production with real domains
+	auto_https off
+}
+
+# =============================================================================
+# Development: localhost (default - no subdomain)
+# Both SuperAdmin and tenant users can work via localhost.
+# TenantGuard determines context from JWT alone when headers are absent.
+# =============================================================================
+http://localhost, http://127.0.0.1 {
+	encode gzip zstd
+
+	# Security headers (relaxed for development)
+	header {
+		X-Frame-Options "SAMEORIGIN"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Dev CSP: allow 'unsafe-inline' for scripts (Vite build may generate inline module scripts)
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'self'"
+	}
+
+	# API Proxy → backend (strip /api prefix)
+	# Do NOT set X-Tenant-Slug or X-Is-SuperAdmin here.
+	# In dev mode, the backend relies on JWT tenantId for context.
+	handle_path /api/* {
+		reverse_proxy backend:3000 {
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	# Frontend static files (SPA fallback)
+	handle {
+		root * /srv/frontend
+		try_files {path} /index.html
+		file_server
+
+		# Cache static assets
+		@static path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
+		header @static Cache-Control "public, max-age=31536000, immutable"
+	}
+}
+
+# =============================================================================
+# SuperAdmin Area: admin.localhost / admin.example.com
+# =============================================================================
+http://admin.localhost, http://admin.* {
+	encode gzip zstd
+
+	header {
+		X-Frame-Options "SAMEORIGIN"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'self'"
+	}
+
+	# API Proxy - SuperAdmin context
+	handle_path /api/* {
+		reverse_proxy backend:3000 {
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Tenant-Slug ""
+			header_up X-Is-SuperAdmin "true"
+		}
+	}
+
+	# Frontend
+	handle {
+		root * /srv/frontend
+		try_files {path} /index.html
+		file_server
+
+		@static path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
+		header @static Cache-Control "public, max-age=31536000, immutable"
+	}
+}
+
+# =============================================================================
+# Tenant Area: {slug}.localhost / {slug}.example.com
+# Catches all other subdomains (after admin.* matched above)
+# =============================================================================
+http://*.localhost {
+	encode gzip zstd
+
+	header {
+		X-Frame-Options "SAMEORIGIN"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'self'"
+	}
+
+	# Redirect www.* to admin.*
+	@www host www.*
+	handle @www {
+		redir https://admin.{labels.1} permanent
+	}
+
+	# API Proxy - Tenant context (slug from subdomain)
+	# {labels.2} extracts subdomain: "acme" from "acme.localhost"
+	handle_path /api/* {
+		reverse_proxy backend:3000 {
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Tenant-Slug {labels.2}
+			header_up X-Is-SuperAdmin "false"
+		}
+	}
+
+	# Frontend
+	handle {
+		root * /srv/frontend
+		try_files {path} /index.html
+		file_server
+
+		@static path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
+		header @static Cache-Control "public, max-age=31536000, immutable"
+	}
+}
