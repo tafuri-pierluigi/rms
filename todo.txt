@@ -1,21 +1,9 @@
-# COMPLETED (26/01/2026)
-✅ EVO-001: Sistema Permessi Dinamici Frontend
-  - TenantBodyInterceptor per protezione multi-tenant
-  - Permission helpers in auth store (hasPermission, hasAnyPermission, hasAllPermissions)
-  - Dynamic UI controls based on permissions
-  - Router guards with permission checks
-  - Action icons visibility based on permissions (stores, users, roles)
-
-# IN PROGRESS / TODO
-
 ## EVOs (Features Future)
-- EVO-002: Business Logic - Creare logica di business sotto ogni tenant/store (prodotto, magazzino, ordini, vendite...)
-- EVO-003: Username Login - Permettere accesso via username oltre che per email (-> username uguali in tenant diversi! basiamoci su email che è univoca no!)
+- EVO-001: Business Logic - Creare logica di business sotto ogni tenant/store (prodotto, magazzino, ordini, vendite...)
 
-## FIXes UI
-- FIX-UI-001: App-header fisso di larghezza e quando clicco su hamburger si apre sidebar sotto, togliamo sidebar-brand
-- [DONE] FIX-UI-002: Icone azioni in tabella, abilitate solo se ho permesso di update (matita) o delete (cestino) ✅
+## Traduzione
+- traduzione testi interfaccia in italiano (attuale solo inglese) con i18n
 
 ## FIXes Backend/Infrastructure
-- FIX-HTTPS: Implementare HTTPS/SSL (nginx configurazione, certificati)
-- FIX-TOKEN-BLACKLIST: JWT blacklist on logout (token still valid for 15min)
+- FIX-HTTPS: Implementare HTTPS/SSL (nginx configurazione, certificati self signed per dev, letsencrypt+dominio per prod)
+- FIX-TOKEN-BLACKLIST: JWT blacklist on logout (token still valid for 15min!)
