@@ -1,20 +1,26 @@
 services:
-  nginx:
-    image: nginx:alpine
-    container_name: rms_nginx
-    restart: unless-stopped
-    ports:
-      - '${NGINX_HTTP_PORT:-80}:80'
-      - '${NGINX_HTTPS_PORT:-443}:443'
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-      - ./rms-frontend/dist:/usr/share/nginx/html:ro
-    depends_on:
-      - backend
-    networks:
-      - rms_network
+  # =========================================================================
+  # NGINX - Default reverse proxy (commented out - using Caddy)
+  # Per switchare: decommenta nginx, commenta caddy
+  # =========================================================================
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: rms_nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - '${NGINX_HTTP_PORT:-80}:80'
+  #     - '${NGINX_HTTPS_PORT:-443}:443'
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./nginx/conf.d:/etc/nginx/conf.d:ro
+  #     - ./nginx/ssl:/etc/nginx/ssl:ro
+  #     - ./rms-frontend/dist:/usr/share/nginx/html:ro
+  #     - nginx_logs:/var/log/nginx
+  #   depends_on:
+  #     backend:
+  #       condition: service_healthy
+  #   networks:
+  #     - rms_network
 
   backend:
     build:
@@ -24,6 +30,12 @@ services:
     restart: unless-stopped
     ports:
       - '${BACKEND_PORT:-3000}:3000'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3000
@@ -63,10 +75,40 @@ services:
     ports:
       - '${DB_PORT:-5432}:5432'
 
+  # =========================================================================
+  # CADDY - Alternative reverse proxy (active)
+  # Vantaggi: HTTPS automatico, config semplice, HTTP/2+3 nativo
+  # Per switchare: commenta caddy, decommenta nginx
+  # =========================================================================
+  caddy:
+    image: caddy:2-alpine
+    container_name: rms_caddy
+    restart: unless-stopped
+    ports:
+      - '${CADDY_HTTP_PORT:-80}:80'
+      - '${CADDY_HTTPS_PORT:-443}:443'
+      - '${CADDY_HTTPS_PORT:-443}:443/udp'  # HTTP/3 (QUIC)
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./rms-frontend/dist:/srv/frontend:ro
+      - caddy_data:/data       # Certificates storage
+      - caddy_config:/config   # Caddy runtime config
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - rms_network
+
 networks:
   rms_network:
     driver: bridge
 
 volumes:
   postgres_data:
+    driver: local
+  nginx_logs:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
     driver: local
