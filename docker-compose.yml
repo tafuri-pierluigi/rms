@@ -1,26 +1,16 @@
 services:
   # =========================================================================
-  # NGINX - Default reverse proxy (commented out - using Caddy)
-  # Per switchare: decommenta nginx, commenta caddy
+  # FRONTEND - Builds the Vue app and deposits files into frontend_dist volume.
+  # Runs once at startup (init container pattern), then exits cleanly.
+  # Caddy reads from the same volume read-only.
   # =========================================================================
-  # nginx:
-  #   image: nginx:alpine
-  #   container_name: rms_nginx
-  #   restart: unless-stopped
-  #   ports:
-  #     - '${NGINX_HTTP_PORT:-80}:80'
-  #     - '${NGINX_HTTPS_PORT:-443}:443'
-  #   volumes:
-  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-  #     - ./nginx/conf.d:/etc/nginx/conf.d:ro
-  #     - ./nginx/ssl:/etc/nginx/ssl:ro
-  #     - ./rms-frontend/dist:/usr/share/nginx/html:ro
-  #     - nginx_logs:/var/log/nginx
-  #   depends_on:
-  #     backend:
-  #       condition: service_healthy
-  #   networks:
-  #     - rms_network
+  frontend:
+    build:
+      context: ./rms-frontend
+      dockerfile: Dockerfile
+    container_name: rms_frontend_build
+    volumes:
+      - frontend_dist:/srv/frontend
 
   backend:
     build:
@@ -76,9 +66,8 @@ services:
       - '${DB_PORT:-5432}:5432'
 
   # =========================================================================
-  # CADDY - Alternative reverse proxy (active)
-  # Vantaggi: HTTPS automatico, config semplice, HTTP/2+3 nativo
-  # Per switchare: commenta caddy, decommenta nginx
+  # CADDY - Reverse proxy
+  # Serves frontend from the shared volume populated by the frontend service.
   # =========================================================================
   caddy:
     image: caddy:2-alpine
@@ -90,10 +79,12 @@ services:
       - '${CADDY_HTTPS_PORT:-443}:443/udp'  # HTTP/3 (QUIC)
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./rms-frontend/dist:/srv/frontend:ro
-      - caddy_data:/data       # Certificates storage
-      - caddy_config:/config   # Caddy runtime config
+      - frontend_dist:/srv/frontend:ro
+      - caddy_data:/data
+      - caddy_config:/config
     depends_on:
+      frontend:
+        condition: service_completed_successfully
       backend:
         condition: service_healthy
     networks:
@@ -106,7 +97,7 @@ networks:
 volumes:
   postgres_data:
     driver: local
-  nginx_logs:
+  frontend_dist:
     driver: local
   caddy_data:
     driver: local
