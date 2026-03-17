@@ -39,6 +39,7 @@ services:
       REFRESH_TOKEN_EXPIRATION: ${REFRESH_TOKEN_EXPIRATION:-7d}
       RATE_LIMIT_TTL: ${RATE_LIMIT_TTL:-900}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost}
     depends_on:
       postgres:
         condition: service_healthy

@@ -21,7 +21,7 @@
 # Both SuperAdmin and tenant users can work via localhost.
 # TenantGuard determines context from JWT alone when headers are absent.
 # =============================================================================
-http://localhost, http://127.0.0.1 {
+http://localhost, http://127.0.0.1, http://ccqvzdl2-80.euw.devtunnels.ms {
 	encode gzip zstd
 
 	# Security headers (relaxed for development)
