@@ -1,1212 +1,135 @@
-# CLAUDE.md - RMS Technical Documentation
+# CLAUDE.md
 
-> Guida tecnica completa per Claude Code (claude.ai/code)
-> Ultimo aggiornamento: 12 Febbraio 2026
-> Status: Business Modules Complete - Catalog, Products, Suppliers, Purchase Orders, Inventory
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
----
-
-## Table of Contents
-
-1. [Project Overview](#project-overview)
-2. [Architecture Deep Dive](#architecture-deep-dive)
-3. [Entity Relationship Diagram](#entity-relationship-diagram)
-4. [Authentication & Authorization Flow](#authentication--authorization-flow)
-5. [Multi-Tenancy Implementation](#multi-tenancy-implementation)
-6. [Backend Technical Details](#backend-technical-details)
-7. [Frontend Technical Details](#frontend-technical-details)
-8. [Nginx & Proxy Configuration](#nginx--proxy-configuration)
-9. [API Reference](#api-reference)
-10. [Known Issues & Workarounds](#known-issues--workarounds)
-11. [Development Workflows](#development-workflows)
-12. [Testing Guide](#testing-guide)
-13. [Deployment Checklist](#deployment-checklist)
+> Last updated: March 2026 | All business modules complete (Catalog, Products, Suppliers, POs, Inventory)
+> **For deep dives**: spawn a Haiku 4.5 subagent to read the relevant source files directly.
 
 ---
 
-## Project Overview
+## Stack
 
-**RMS** (Retail Management System) is a multi-tenant managment system for fashion store built with:
-
-| Layer | Technology | Version |
-|-------|------------|---------|
+| Layer | Tech | Version |
+|-------|------|---------|
 | Backend | NestJS | 11.x |
+| ORM | TypeORM | 0.3.x |
 | Frontend | Vue 3 + Vite | 3.5.x / 7.2.x |
-| Database | PostgreSQL | 15 |
-| ORM | TypeORM | 0.3.28 |
 | State | Pinia | 3.0.x |
-| Proxy | Nginx | alpine |
+| i18n | vue-i18n | 9.x |
+| Database | PostgreSQL | 15 |
+| Proxy | Caddy | 2 |
 | Container | Docker Compose | 3.8 |
 
-### Repository Structure
+---
 
-```
-rms/                           # Root repository
-├── docker-compose.yml         # Full stack orchestration
-├── .env / .env.example        # Environment configuration
-├── CLAUDE.md                  # This file
-├── ISSUES_ANALYSIS.md         # Bug tracking & analysis
-├── nginx/
-│   ├── nginx.conf             # Main Nginx config
-│   ├── conf.d/default.conf    # Virtual hosts & routing
-│   └── ssl/                   # SSL certificates (EMPTY - needs setup)
-├── rms-backend/               # Git submodule
-│   ├── src/
-│   │   ├── app.module.ts      # Root module with global guards
-│   │   ├── main.ts            # Bootstrap & CORS config
-│   │   ├── auth/              # Authentication module
-│   │   ├── users/             # User CRUD + quota
-│   │   ├── tenants/           # Tenant management
-│   │   ├── roles/             # Role definitions
-│   │   ├── permissions/       # Permission definitions
-│   │   ├── stores/            # Store management + quota
-│   │   ├── catalog/           # Brands, Colors, Tags, SizeScales, Collections
-│   │   ├── products/          # Products + Variants + Images
-│   │   ├── suppliers/         # Supplier management
-│   │   ├── purchase-orders/   # Purchase orders + items + receiving
-│   │   ├── inventory/         # Stock levels + movements
-│   │   ├── common/
-│   │   │   ├── guards/        # JwtAuth, Tenant, Permissions, Throttler
-│   │   │   └── decorators/    # @Public, @Permissions, @CurrentUser
-│   │   └── database/
-│   │       ├── migrations/    # TypeORM migrations
-│   │       └── seeds/         # Database seeding
-│   └── CLAUDE.md              # Backend-specific docs
-└── rms-frontend/              # Git submodule
-    ├── src/
-    │   ├── main.ts            # Vue app bootstrap
-    │   ├── App.vue            # Root component
-    │   ├── router/index.ts    # Vue Router + navigation guards
-    │   ├── stores/            # Pinia stores (auth, users, catalog, products, etc.)
-    │   ├── api/               # Axios client + per-module API files
-    │   ├── views/
-    │   │   ├── app/           # Tenant views (catalog/, suppliers, products, PO, inventory)
-    │   │   └── admin/         # SuperAdmin views
-    │   ├── components/        # Reusable (common/, app/, admin/)
-    │   └── types/             # TypeScript interfaces per module
-    └── vite.config.ts         # Vite + API proxy config
-```
+## Architecture
+
+3 containers on `rms_network`: **caddy** (80/443) → **backend** (3000) → **postgres** (5432).
+Caddy bakes the compiled frontend into its image (multi-stage build in `caddy/Dockerfile`) and proxies `/api/*` to NestJS. Nginx config is kept in `nginx/` as a documented alternative but is commented out in `docker-compose.yml`.
 
 ---
 
-## Architecture Deep Dive
+## Backend (`rms-backend/src/`)
 
-### Service Dependencies
+Modules: `auth`, `users`, `tenants`, `roles`, `permissions`, `stores`, `catalog`, `products`, `suppliers`, `purchase-orders`, `inventory`
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        NGINX (rms_nginx)                        │
-│  Port: 80/443 | Static files + API proxy                        │
-│  Routes: /api/* → backend:3000, /* → /usr/share/nginx/html      │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ depends_on: backend
-                             │
-┌────────────────────────────▼────────────────────────────────────┐
-│                     BACKEND (rms_backend)                       │
-│  Port: 3000 | NestJS REST API                                   │
-│  Guards: Throttler → JwtAuth → Tenant → Permissions             │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ depends_on: postgres (healthy)
-                             │
-┌────────────────────────────▼────────────────────────────────────┐
-│                   POSTGRES (rms_postgres)                       │
-│  Port: 5432 | PostgreSQL 15                                     │
-│  Volume: postgres_data (persistent)                             │
-└─────────────────────────────────────────────────────────────────┘
-```
+**Guard order — DO NOT CHANGE:** `Throttler → JwtAuth → Tenant → Permissions` (defined in `app.module.ts`)
 
-### Network Configuration
+**Auth:** JWT (15min) + Refresh Token (7d, rotated). SuperAdmin = `tenantId === null` in JWT payload.
 
-- **Network**: `rms_network` (bridge)
-- **Internal DNS**: Services communicate via container names (backend:3000, postgres:5432)
-- **External Ports**:
-  - 80 (HTTP) → Nginx
-  - 443 (HTTPS) → Nginx (not configured yet)
-  - 3000 → Backend (direct access, should be internal only in production)
-  - 5432 → PostgreSQL (should be internal only in production)
+**Permissions:** `resource:action` format (e.g. `users:create`, `inventory:read`). Checked via `@Permissions()` decorator.
+
+**Multi-tenancy:** TypeORM does NOT auto-filter by tenant — every service manually applies `where: { tenantId: user.tenantId }`. SuperAdmin skips the filter.
+
+**`TenantBodyInterceptor`:** Strips `tenantId` from request body for non-SuperAdmin, preventing tenant-hopping attacks.
+
+**TypeORM gotchas:**
+- `findOne()` inside a transaction can't see uncommitted data — call after commit
+- `manager.save()` on externally-loaded entities causes cascade re-inserts — use `manager.update()` instead
+- Empty string `""` ≠ `undefined`/`null` for `@IsUrl()` and unique constraints
 
 ---
 
-## Entity Relationship Diagram
+## Frontend (`rms-frontend/src/`)
 
-```
-┌─────────────────┐       ┌─────────────────┐
-│     TENANT      │       │      USER       │
-├─────────────────┤       ├─────────────────┤
-│ id (PK)         │──┐    │ id (PK)         │
-│ name            │  │    │ email           │
-│ slug (unique)   │  │    │ password (hash) │
-│ isActive        │  └───▶│ tenantId (FK)   │──────┐
-│ maxUsers        │       │ firstName       │      │
-│ maxStores       │       │ lastName        │      │
-│ createdAt       │       │ isActive        │      │
-│ updatedAt       │       │ deletedAt       │      │
-└─────────────────┘       │ createdAt       │      │
-        │                 │ updatedAt       │      │
-        │                 └────────┬────────┘      │
-        │                          │               │
-        │                   ┌──────┴──────┐        │
-        │                   │             │        │
-        ▼                   ▼             ▼        │
-┌─────────────────┐  ┌───────────┐  ┌───────────┐  │
-│     STORE       │  │user_roles │  │user_stores│  │
-├─────────────────┤  ├───────────┤  ├───────────┤  │
-│ id (PK)         │  │ userId    │  │ userId    │  │
-│ name            │  │ roleId    │  │ storeId   │  │
-│ tenantId (FK)   │◀─┼───────────┼──┼───────────┼──┘
-│ isActive        │  └───────────┘  └───────────┘
-│ createdAt       │        │              │
-│ updatedAt       │        │              │
-└─────────────────┘        │              │
-                           ▼              │
-                    ┌─────────────────┐   │
-                    │      ROLE       │   │
-                    ├─────────────────┤   │
-                    │ id (PK)         │◀──┘
-                    │ name            │
-                    │ description     │
-                    │ tenantId (FK)   │ ← null = global role
-                    │ createdAt       │
-                    │ updatedAt       │
-                    └────────┬────────┘
-                             │
-                      ┌──────┴──────┐
-                      ▼             │
-               ┌────────────┐       │
-               │role_perms  │       │
-               ├────────────┤       │
-               │ roleId     │───────┘
-               │ permId     │────────┐
-               └────────────┘        │
-                                     ▼
-                           ┌─────────────────┐
-                           │   PERMISSION    │
-                           ├─────────────────┤
-                           │ id (PK)         │
-                           │ name (unique)   │ ← format: resource:action
-                           │ description     │
-                           │ createdAt       │
-                           │ updatedAt       │
-                           └─────────────────┘
-
-┌─────────────────────────┐
-│     REFRESH_TOKEN       │
-├─────────────────────────┤
-│ id (PK)                 │
-│ userId (FK)             │
-│ token (unique)          │
-│ expiresAt               │
-│ isRevoked               │
-│ userAgent (nullable)    │ ← NOT populated (bug)
-│ ipAddress (nullable)    │ ← NOT populated (bug)
-│ createdAt               │
-└─────────────────────────┘
-```
-
-### Key Relationships
-
-| Relationship | Type | Notes |
-|--------------|------|-------|
-| User → Tenant | ManyToOne | `tenantId = null` for SuperAdmin |
-| User ↔ Role | ManyToMany | Via `user_roles` junction |
-| User ↔ Store | ManyToMany | Via `user_stores` junction |
-| Role → Tenant | ManyToOne | `tenantId = null` for global roles |
-| Role ↔ Permission | ManyToMany | Via `role_permissions` junction |
-| Store → Tenant | ManyToOne | Stores belong to tenants |
-| RefreshToken → User | ManyToOne | For token management |
-
----
-
-## Authentication & Authorization Flow
-
-### Login Flow
-
-```
-┌─────────┐     POST /auth/login      ┌─────────────┐
-│ Client  │──────────────────────────▶│   Backend   │
-│         │   {email, password}       │             │
-└─────────┘                           └──────┬──────┘
-                                             │
-     1. Validate credentials                 │
-     2. Check user.isActive                  │
-     3. Check tenant.isActive (if not SA)    │
-     4. Generate JWT (15min)                 │
-     5. Create RefreshToken (7d)             │
-                                             │
-┌─────────┐   {user, accessToken,     ┌──────▼──────┐
-│ Client  │◀──────refreshToken}───────│   Backend   │
-│         │                           │             │
-└─────────┘                           └─────────────┘
-     │
-     │ Store in localStorage:
-     │  - accessToken
-     │  - refreshToken
-     ▼
-```
-
-### JWT Payload Structure
-
-```typescript
-{
-  sub: "user-uuid",           // User ID
-  email: "user@example.com",
-  tenantId: "tenant-uuid",    // null for SuperAdmin
-  roles: ["ADMIN", "USER"],   // Role names
-  iat: 1737561234,            // Issued at
-  exp: 1737562134             // Expires (15min later)
-}
-```
-
-### Request Authentication
-
-```
-┌─────────┐                                    ┌─────────────┐
-│ Client  │───GET /api/users───────────────────│   Nginx     │
-│         │ Authorization: Bearer <jwt>        │             │
-│         │ X-Tenant-Slug: acme (from subdomain)│            │
-└─────────┘                                    └──────┬──────┘
-                                                      │
-                                                      │ Rewrite: /api/users → /users
-                                                      │ Add headers: X-Tenant-Slug, X-Is-SuperAdmin
-                                                      ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                           BACKEND                                 │
-├──────────────────────────────────────────────────────────────────┤
-│  1. ThrottlerGuard  │ Check rate limit (100 req/15min)           │
-│  2. JwtAuthGuard    │ Validate JWT, attach user to request       │
-│  3. TenantGuard     │ Validate tenant context from header        │
-│  4. PermissionsGuard│ Check @Permissions('users:read')           │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-### Guard Execution Order (CRITICAL)
-
-**File:** `rms-backend/src/app.module.ts`
-
-```typescript
-providers: [
-  { provide: APP_GUARD, useClass: CustomThrottlerGuard },  // 1st
-  { provide: APP_GUARD, useClass: JwtAuthGuard },          // 2nd
-  { provide: APP_GUARD, useClass: TenantGuard },           // 3rd
-  { provide: APP_GUARD, useClass: PermissionsGuard },      // 4th
-]
-```
-
-**DO NOT CHANGE THIS ORDER** - Security implications:
-- Throttler first to prevent DDoS before any processing
-- JWT before Tenant to identify user
-- Tenant before Permissions to set context
-- Permissions last to authorize action
-
-### Token Refresh Flow
-
-```
-┌─────────┐  POST /auth/refresh       ┌─────────────┐
-│ Client  │──────────────────────────▶│   Backend   │
-│         │  {refreshToken}           │             │
-└─────────┘                           └──────┬──────┘
-                                             │
-     1. Find refresh token in DB             │
-     2. Check not expired/revoked            │
-     3. Revoke old token (rotation)          │
-     4. Generate new JWT                     │
-     5. Create new RefreshToken              │
-                                             │
-┌─────────┐   {accessToken,           ┌──────▼──────┐
-│ Client  │◀───refreshToken}──────────│   Backend   │
-└─────────┘                           └─────────────┘
-```
-
----
-
-## Multi-Tenancy Implementation
-
-### Tenant Detection
-
-**3 Scenarios in Nginx:**
-
-| Subdomain | X-Tenant-Slug | X-Is-SuperAdmin | Access |
-|-----------|---------------|-----------------|--------|
-| `admin.*` | `""` (empty) | `"true"` | SuperAdmin area |
-| `acme.*` | `"acme"` | `"false"` | Tenant area |
-| `localhost` | (pass-through) | (pass-through) | Dev mode |
-
-### SuperAdmin Detection Pattern
-
-**Backend:**
-```typescript
-// In any service/controller
-const isSuperAdmin = user.tenantId === null;
-
-if (isSuperAdmin) {
-  // Can access all tenants, impersonate via X-Tenant-Id header
-  return this.repository.find(); // No tenant filter
-} else {
-  // Restricted to own tenant
-  return this.repository.find({ where: { tenantId: user.tenantId } });
-}
-```
-
-**Frontend:**
-```typescript
-// In auth.store.ts
-const isSuperAdmin = computed(() => {
-  const payload = parseJwt(accessToken.value);
-  return payload?.tenantId === null;
-});
-```
-
-### Tenant Filtering (Manual - NOT Automatic)
-
-**IMPORTANT:** TypeORM does NOT auto-filter by tenant. Each service must implement:
-
-```typescript
-// CORRECT - Manual tenant filtering
-async findAll(user: User): Promise<Entity[]> {
-  if (user.tenantId === null) {
-    // SuperAdmin sees all
-    return this.repository.find();
-  }
-  // Regular user sees only their tenant
-  return this.repository.find({
-    where: { tenantId: user.tenantId }
-  });
-}
-
-// WRONG - No tenant filtering
-async findAll(): Promise<Entity[]> {
-  return this.repository.find(); // Security vulnerability!
-}
-```
-
-### TenantBodyInterceptor - Centralized TenantId Protection
-
-**File**: `rms-backend/src/common/interceptors/tenant-body.interceptor.ts`
-
-**Purpose**: Automatically strip `tenantId` from request body for non-SuperAdmin users, preventing unauthorized tenant context changes.
-
-**Security Pattern**:
-```typescript
-// For non-SuperAdmin:
-- POST /users with body { tenantId: "other-tenant" }
-  → Interceptor removes tenantId → Forced to own tenant ✓
-
-- PATCH /stores with body { tenantId: "other-tenant" }
-  → Interceptor removes tenantId → TenantId preserved ✓
-
-// For SuperAdmin:
-- POST /users with body { tenantId: "specific-tenant" }
-  → tenantId NOT removed → Can assign to any tenant ✓
-```
-
-**Execution Order in app.module.ts**:
-```typescript
-// After Guards (which identify user + set request.tenantId)
-// BEFORE Pipes/DTO validation (which would reject missing tenantId field)
-[TenantGuard] → [TenantBodyInterceptor] → [DTO Validation] → [Controller]
-```
-
-**Service Implementation**:
-```typescript
-async update(id: string, updateStoreDto: UpdateStoreDto): Promise<Store> {
-  const store = await this.findOne(id);
-
-  // Exclude tenantId from destructuring if undefined (interceptor removed it)
-  const { tenantId, ...updateData } = updateStoreDto;
-  Object.assign(store, updateData);
-
-  // Only update if explicitly provided (SuperAdmin can change tenant)
-  if (tenantId !== undefined) {
-    store.tenantId = tenantId;
-  }
-
-  return this.storeRepository.save(store);
-}
-```
-
----
-
-## Backend Technical Details
-
-### Module Structure
-
-```
-src/
-├── app.module.ts          # Root module, global guards
-├── main.ts                # Bootstrap, CORS, Helmet, Validation
-│
-├── auth/
-│   ├── auth.module.ts
-│   ├── auth.controller.ts # POST /auth/login, /register, /refresh, /logout
-│   ├── auth.service.ts    # Business logic
-│   ├── strategies/
-│   │   └── jwt.strategy.ts # Passport JWT strategy
-│   ├── dto/
-│   │   ├── login.dto.ts
-│   │   └── register.dto.ts
-│   └── entities/
-│       └── refresh-token.entity.ts
-│
-├── users/
-│   ├── users.module.ts
-│   ├── users.controller.ts # CRUD + tenant filtering
-│   ├── users.service.ts    # Quota checking, password hashing
-│   ├── dto/
-│   │   ├── create-user.dto.ts
-│   │   └── update-user.dto.ts
-│   └── entities/
-│       └── user.entity.ts
-│
-├── tenants/
-│   ├── tenants.module.ts
-│   ├── tenants.controller.ts
-│   ├── tenants.service.ts  # Slug generation
-│   ├── dto/...
-│   └── entities/
-│       └── tenant.entity.ts
-│
-├── roles/
-│   ├── roles.module.ts
-│   ├── roles.controller.ts
-│   ├── roles.service.ts    # Permission association
-│   ├── dto/...
-│   └── entities/
-│       └── role.entity.ts
-│
-├── permissions/
-│   ├── permissions.module.ts
-│   ├── permissions.controller.ts
-│   ├── permissions.service.ts
-│   ├── dto/...
-│   └── entities/
-│       └── permission.entity.ts
-│
-├── stores/
-│   ├── stores.module.ts
-│   ├── stores.controller.ts # CRUD + user association endpoints
-│   ├── stores.service.ts    # Quota checking, user management
-│   ├── dto/
-│   │   ├── create-store.dto.ts
-│   │   └── add-user-to-store.dto.ts
-│   └── entities/
-│       └── store.entity.ts
-│
-├── common/
-│   ├── guards/
-│   │   ├── jwt-auth.guard.ts
-│   │   ├── tenant.guard.ts
-│   │   ├── permissions.guard.ts
-│   │   └── custom-throttler.guard.ts
-│   ├── decorators/
-│   │   ├── public.decorator.ts       # @Public() - skip auth
-│   │   ├── permissions.decorator.ts  # @Permissions('users:read')
-│   │   ├── current-user.decorator.ts # @CurrentUser()
-│   │   └── current-tenant.decorator.ts
-│   ├── interceptors/
-│   │   └── tenant-body.interceptor.ts # Strips tenantId from body for non-SuperAdmin
-│   ├── utils/
-│   │   └── auth.utils.ts             # isSuperAdmin(), canAccessTenant(), PROTECTED_ROLES
-│   └── filters/
-│       └── http-exception.filter.ts
-│
-├── catalog/
-│   ├── catalog.module.ts
-│   ├── catalog.controller.ts  # CRUD for brands, colors, tags, size-scales, collections
-│   ├── catalog.service.ts
-│   ├── dto/                   # Create/Update DTOs per entity
-│   └── entities/              # Brand, Color, Tag, SizeScale, Size, Collection
-│
-├── products/
-│   ├── products.module.ts
-│   ├── products.controller.ts # Products + variants + images
-│   ├── products.service.ts    # Transaction-based create/update
-│   ├── dto/
-│   └── entities/              # Product, ProductVariant, ProductImage, ProductTag
-│
-├── suppliers/
-│   ├── suppliers.module.ts
-│   ├── suppliers.controller.ts
-│   ├── suppliers.service.ts
-│   ├── dto/
-│   └── entities/
-│       └── supplier.entity.ts
-│
-├── purchase-orders/
-│   ├── purchase-orders.module.ts
-│   ├── purchase-orders.controller.ts  # CRUD + receive + status workflow
-│   ├── purchase-orders.service.ts     # Transaction-based operations
-│   ├── dto/
-│   └── entities/              # PurchaseOrder, PurchaseOrderItem
-│
-├── inventory/
-│   ├── inventory.module.ts
-│   ├── inventory.controller.ts  # Stock levels + movements
-│   ├── stock-manager.service.ts # Stock adjustments, counts, initialization
-│   ├── dto/
-│   └── entities/              # ProductStockLevel, StockMovement
-│
-├── config/
-│   ├── config.module.ts
-│   └── validation.schema.ts  # Joi validation for env vars
-│
-└── database/
-    ├── database.module.ts
-    ├── database.config.ts
-    ├── migrations/
-    │   └── 1768908661700-initialMigration.ts
-    └── seeds/
-        ├── seed.module.ts
-        └── seed.service.ts  # Creates test data
-```
-
-### Permission Format
-
-```
-resource:action
-
-Examples:
-- users:create
-- users:read
-- users:update
-- users:delete
-- tenants:read
-- tenants:create
-- roles:manage
-- permissions:read
-- stores:create
-```
-
-### Default Roles & Permissions (from seed)
-
-| Role | Permissions | Count | Scope |
-|------|-------------|-------|-------|
-| SUPER_ADMIN | users:*,tenants:*,roles:*,permissions:*,stores:* | 20 | Global (tenantId = null) |
-| ADMIN | users:*,roles:*,permissions:read,stores:read,stores:update | 11 | Per-tenant |
-| USER | (none) | 0 | Per-tenant (read-only with no permissions) |
-
-**Format**: `resource:action` (e.g., `users:create`, `stores:delete`)
-
-**Resources**: users, tenants, roles, permissions, stores, brands, colors, tags, size-scales, collections, products, suppliers, purchase-orders, inventory
-**Actions**: create, read, update, delete (+ `receive` for purchase-orders)
-
-### Quota System
-
-**Tenant quotas:**
-```typescript
-// tenant.entity.ts
-maxUsers: number;   // Default: 10
-maxStores: number;  // Default: 5
-```
-
-**Checked in:**
-- `users.service.ts:checkUserQuota()` - Before creating user
-- `stores.service.ts:checkStoreQuota()` - Before creating store
-
-**BUG:** Race condition - parallel requests can exceed quota (see ISSUES_ANALYSIS.md)
-
----
-
-## Frontend Technical Details
-
-### Store Architecture
-
-```
-stores/
-├── auth.store.ts              # Authentication state, JWT handling
-├── users.store.ts             # User CRUD, filtering
-├── tenants.store.ts           # Tenant CRUD
-├── roles.store.ts             # Role CRUD, permission assignment
-├── stores.store.ts            # Store CRUD
-├── suppliers.store.ts         # Supplier CRUD
-├── catalog.store.ts           # Brands, Colors, Tags, SizeScales, Collections
-├── products.store.ts          # Products + Variants management
-├── purchase-orders.store.ts   # PO CRUD + receive + status workflow
-└── inventory.store.ts         # Stock levels + movements
-```
-
-### Auth Store Pattern
-
-```typescript
-// auth.store.ts key exports
-export const useAuthStore = defineStore('auth', () => {
-  const accessToken = ref<string | null>(localStorage.getItem('accessToken'));
-  const refreshToken = ref<string | null>(localStorage.getItem('refreshToken'));
-  const user = ref<User | null>(null);
-  const userPermissions = ref<string[]>([]); // NEW - flat permissions array
-
-  // Computed
-  const isAuthenticated = computed(() => !!accessToken.value);
-  const isSuperAdmin = computed(() => parseJwt(accessToken.value)?.tenantId === null);
-
-  // Permission Helpers (NEW)
-  function hasPermission(permission: string): boolean {
-    if (isSuperAdmin.value) return true; // SuperAdmin bypasses all
-    return userPermissions.value.includes(permission);
-  }
-
-  function hasAnyPermission(permissions: string[]): boolean {
-    if (isSuperAdmin.value) return true;
-    return permissions.some((p) => userPermissions.value.includes(p));
-  }
-
-  function hasAllPermissions(permissions: string[]): boolean {
-    if (isSuperAdmin.value) return true;
-    return permissions.every((p) => userPermissions.value.includes(p));
-  }
-
-  // Actions
-  async function login(email: string, password: string): Promise<boolean>;
-  async function logout(): Promise<void>;
-  async function refreshAccessToken(): Promise<boolean>;
-  async function setTokens(access: string, refresh: string): Promise<void>;
-  async function init(): Promise<void>; // Called on app mount
-  private async function fetchUserDetails(): Promise<void>; // Fetch permissions from /auth/me
-
-  return {
-    accessToken, user, userPermissions,
-    isAuthenticated, isSuperAdmin,
-    hasPermission, hasAnyPermission, hasAllPermissions,
-    login, logout, ...
-  };
-});
-```
-
-**Permission Flow**:
-1. User logs in → JWT contains only roles
-2. `setTokens()` calls `fetchUserDetails()` → GET /auth/me returns flattened permissions
-3. `userPermissions` ref populated with string[] (e.g., `["users:read", "stores:create"]`)
-4. UI components call `hasPermission()` helpers for O(1) checks
-5. Page refresh → `init()` calls `fetchUserDetails()` again
-
-### API Client Pattern
-
-```typescript
-// api/axios.ts
-const api = axios.create({
-  baseURL: '/api',
-  headers: { 'Content-Type': 'application/json' }
-});
-
-// Request interceptor - add JWT
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Response interceptor - handle 401, refresh token
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      // Attempt refresh...
-    }
-  }
-);
-```
-
-### Router Guards
-
-```typescript
-// router/index.ts
-router.beforeEach(async (to, from) => {
-  const authStore = useAuthStore();
-
-  // Initialize auth state on first navigation
-  if (!authStore.user && authStore.accessToken) {
-    authStore.init();
-  }
-
-  // Public routes
-  if (to.meta.public) return true;
-
-  // Auth required
-  if (!authStore.isAuthenticated) {
-    return { name: 'login' };
-  }
-
-  // SuperAdmin only routes
-  if (to.meta.requiresSuperAdmin && !authStore.isSuperAdmin) {
-    return { name: 'app-dashboard' };
-  }
-
-  return true;
-});
-```
-
-### Two Application Areas
-
-| Area | Path Prefix | Target User | Layout |
-|------|-------------|-------------|--------|
+| Area | Path prefix | Users | Layout |
+|------|-------------|-------|--------|
 | App | `/` | Tenant Admin/User | AppLayout |
 | Admin | `/admin` | SuperAdmin | AdminLayout |
 
----
+Views live in `src/views/` (SuperAdmin) and `src/views/app/` (Tenant users).
 
-## Nginx & Proxy Configuration
+**i18n:** `src/locales/en.json` and `it.json`. All UI strings must use translation keys.
 
-### Virtual Host Configuration
+**Stores (Pinia):** `auth`, `users`, `tenants`, `roles`, `stores`, `suppliers`, `catalog`, `products`, `purchase-orders`, `inventory`
 
-```nginx
-# nginx/conf.d/default.conf
+**Auth store key pattern:** On login → fetch `/auth/me` → populate flat `userPermissions: string[]`. `hasPermission()` is O(1). SuperAdmin bypasses all permission checks.
 
-# 1. SuperAdmin Area (admin.*)
-server {
-    listen 80;
-    server_name admin.* admin.localhost;
+**API client (`api/axios.ts`):** Axios with request interceptor (attach JWT) + response interceptor (401 → auto-refresh, skip auth endpoints to avoid loops).
 
-    # Force SuperAdmin context
-    proxy_set_header X-Tenant-Slug "";
-    proxy_set_header X-Is-SuperAdmin "true";
-
-    location /api/ {
-        limit_req zone=api_limit burst=20 nodelay;
-        rewrite ^/api/(.*)$ /$1 break;
-        proxy_pass http://backend;
-    }
-}
-
-# 2. Tenant Area (tenant-slug.*)
-server {
-    listen 80;
-    server_name ~^(?<tenant>[^.]+)\..*;
-
-    # Extract tenant from subdomain
-    proxy_set_header X-Tenant-Slug $tenant;
-    proxy_set_header X-Is-SuperAdmin "false";
-
-    location /api/ {
-        limit_req zone=api_limit burst=20 nodelay;
-        rewrite ^/api/(.*)$ /$1 break;
-        proxy_pass http://backend;
-    }
-}
-
-# 3. Development (localhost)
-server {
-    listen 80;
-    server_name localhost 127.0.0.1;
-
-    # Pass-through (no forced headers)
-    location /api/ {
-        rewrite ^/api/(.*)$ /$1 break;
-        proxy_pass http://backend;
-    }
-}
-```
-
-### Rate Limiting
-
-```nginx
-# nginx.conf
-limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
-limit_req_zone $binary_remote_addr zone=login_limit:10m rate=1r/s;
-```
-
-**Applied:**
-- `/api/*` → api_limit (10 req/s, burst 20)
-- `/api/auth/*` → login_limit (1 req/s, burst 5)
-
-### Security Headers (Applied)
-
-```nginx
-add_header X-Frame-Options "SAMEORIGIN" always;
-add_header X-Content-Type-Options "nosniff" always;
-add_header X-XSS-Protection "1; mode=block" always;  # Deprecated
-add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-```
-
-**MISSING (Critical):**
-- `Strict-Transport-Security` (HSTS)
-- `Content-Security-Policy` (CSP)
+**Router guards (`router/index.ts`):** Redirect unauthenticated → login; redirect non-SuperAdmin away from `requiresSuperAdmin` routes.
 
 ---
 
-## API Reference
+## Infrastructure
 
-### Auth Endpoints
+**Caddy** sets `X-Tenant-Slug` / `X-Is-SuperAdmin` headers from subdomain:
+- `admin.*` → SuperAdmin context (`X-Is-SuperAdmin: true`)
+- `<slug>.*` → Tenant context (`X-Tenant-Slug: <slug>`)
+- `localhost` → no headers set; backend relies on JWT `tenantId` alone
 
-| Method | Endpoint | Body | Response | Auth |
-|--------|----------|------|----------|------|
-| POST | `/auth/login` | `{email, password}` | `{user, accessToken, refreshToken}` | No |
-| POST | `/auth/register` | `{email, password, firstName, lastName}` | `{user, accessToken, refreshToken}` | No |
-| POST | `/auth/refresh` | `{refreshToken}` | `{accessToken, refreshToken}` | No |
-| POST | `/auth/logout` | `{refreshToken}` | `{message}` | Yes |
-| GET | `/auth/me` | - | `User` | Yes |
+**HTTPS:** Caddy handles it automatically. In dev, `auto_https off` is set in `caddy/Caddyfile`. For production, remove that directive and point a real domain.
 
-### User Endpoints
+**TypeORM migrations** in `rms-backend/src/database/migrations/`. Seed in `seeds/seed.service.ts`.
 
-| Method | Endpoint | Permission | Notes |
-|--------|----------|------------|-------|
-| GET | `/users` | `users:read` | Filtered by tenant |
-| GET | `/users/:id` | `users:read` | Single user |
-| POST | `/users` | `users:create` | Quota checked |
-| PATCH | `/users/:id` | `users:update` | |
-| DELETE | `/users/:id` | `users:delete` | Soft delete |
-
-### Tenant Endpoints (SuperAdmin only)
-
-| Method | Endpoint | Permission |
-|--------|----------|------------|
-| GET | `/tenants` | `tenants:read` |
-| GET | `/tenants/:id` | `tenants:read` |
-| POST | `/tenants` | `tenants:create` |
-| PATCH | `/tenants/:id` | `tenants:update` |
-| DELETE | `/tenants/:id` | `tenants:delete` |
-
-### Role Endpoints
-
-| Method | Endpoint | Permission |
-|--------|----------|------------|
-| GET | `/roles` | `roles:read` |
-| POST | `/roles` | `roles:create` |
-| PATCH | `/roles/:id` | `roles:update` |
-| DELETE | `/roles/:id` | `roles:delete` |
-
-### Store Endpoints
-
-| Method | Endpoint | Permission | Notes |
-|--------|----------|------------|-------|
-| GET | `/stores` | `stores:read` | Filtered by tenant |
-| POST | `/stores` | `stores:create` | Quota checked |
-| PATCH | `/stores/:id` | `stores:update` | |
-| DELETE | `/stores/:id` | `stores:delete` | |
-| POST | `/stores/:id/users` | `stores:update` | Add user to store |
-| DELETE | `/stores/:id/users/:userId` | `stores:update` | Remove user from store |
-
-### Supplier Endpoints
-
-| Method | Endpoint | Permission | Notes |
-|--------|----------|------------|-------|
-| GET | `/suppliers` | `suppliers:read` | Filtered by tenant |
-| GET | `/suppliers/:id` | `suppliers:read` | |
-| POST | `/suppliers` | `suppliers:create` | |
-| PATCH | `/suppliers/:id` | `suppliers:update` | |
-| DELETE | `/suppliers/:id` | `suppliers:delete` | |
-
-### Catalog Endpoints
-
-| Method | Endpoint | Permission | Notes |
-|--------|----------|------------|-------|
-| GET | `/catalog/brands` | `brands:read` | Filtered by tenant |
-| POST | `/catalog/brands` | `brands:create` | |
-| PATCH | `/catalog/brands/:id` | `brands:update` | |
-| DELETE | `/catalog/brands/:id` | `brands:delete` | |
-| GET | `/catalog/colors` | `colors:read` | |
-| POST | `/catalog/colors` | `colors:create` | |
-| PATCH | `/catalog/colors/:id` | `colors:update` | |
-| DELETE | `/catalog/colors/:id` | `colors:delete` | |
-| GET | `/catalog/tags` | `tags:read` | |
-| POST | `/catalog/tags` | `tags:create` | |
-| PATCH | `/catalog/tags/:id` | `tags:update` | |
-| DELETE | `/catalog/tags/:id` | `tags:delete` | |
-| GET | `/catalog/size-scales` | `size-scales:read` | Includes nested sizes |
-| POST | `/catalog/size-scales` | `size-scales:create` | |
-| PATCH | `/catalog/size-scales/:id` | `size-scales:update` | |
-| DELETE | `/catalog/size-scales/:id` | `size-scales:delete` | |
-| POST | `/catalog/size-scales/:id/sizes` | `size-scales:update` | Add size |
-| DELETE | `/catalog/size-scales/:id/sizes/:sizeId` | `size-scales:update` | Remove size |
-| GET | `/catalog/collections` | `collections:read` | |
-| POST | `/catalog/collections` | `collections:create` | |
-| PATCH | `/catalog/collections/:id` | `collections:update` | |
-| DELETE | `/catalog/collections/:id` | `collections:delete` | |
-
-### Product Endpoints
-
-| Method | Endpoint | Permission | Notes |
-|--------|----------|------------|-------|
-| GET | `/products` | `products:read` | Filtered by tenant, includes variants |
-| GET | `/products/:id` | `products:read` | Full detail with relations |
-| POST | `/products` | `products:create` | |
-| PATCH | `/products/:id` | `products:update` | |
-| DELETE | `/products/:id` | `products:delete` | |
-| POST | `/products/:id/variants` | `products:update` | Add variant |
-| PATCH | `/products/:id/variants/:variantId` | `products:update` | Update variant |
-| DELETE | `/products/:id/variants/:variantId` | `products:update` | Delete variant |
-
-### Purchase Order Endpoints
-
-| Method | Endpoint | Permission | Notes |
-|--------|----------|------------|-------|
-| GET | `/purchase-orders` | `purchase-orders:read` | Filtered by tenant |
-| GET | `/purchase-orders/:id` | `purchase-orders:read` | Full detail with items |
-| POST | `/purchase-orders` | `purchase-orders:create` | |
-| PATCH | `/purchase-orders/:id` | `purchase-orders:update` | |
-| DELETE | `/purchase-orders/:id` | `purchase-orders:delete` | |
-| POST | `/purchase-orders/:id/items` | `purchase-orders:update` | Add item |
-| PATCH | `/purchase-orders/:id/items/:itemId` | `purchase-orders:update` | Update item |
-| DELETE | `/purchase-orders/:id/items/:itemId` | `purchase-orders:update` | Delete item |
-| PATCH | `/purchase-orders/:id/status` | `purchase-orders:update` | Change status (auto-receives on Received) |
-| POST | `/purchase-orders/:id/receive` | `purchase-orders:receive` | Receive items + update stock |
-
-### Inventory Endpoints
-
-| Method | Endpoint | Permission | Notes |
-|--------|----------|------------|-------|
-| GET | `/inventory/stock/:variantId/:storeId` | `inventory:read` | Single stock level |
-| GET | `/inventory/stock/store/:storeId` | `inventory:read` | All stock for store |
-| GET | `/inventory/stock/store/:storeId/low` | `inventory:read` | Low stock alerts |
-| POST | `/inventory/stock/initialize` | `inventory:create` | Initialize stock level |
-| POST | `/inventory/stock/adjust` | `inventory:update` | Single adjustment |
-| POST | `/inventory/stock/adjust/batch` | `inventory:update` | Batch adjustment |
-| POST | `/inventory/stock/count` | `inventory:update` | Physical count |
-| POST | `/inventory/stock/count/batch` | `inventory:update` | Batch count |
-| PATCH | `/inventory/stock/:variantId/:storeId/settings` | `inventory:update` | Min/max/reorder settings |
-| GET | `/inventory/movements` | `inventory:read` | Returns `{movements, total}` |
+**Quota system:** `maxUsers` / `maxStores` per tenant, checked before create. Known race condition (BE-001) — not yet fixed with DB locking.
 
 ---
 
-## Known Issues & Workarounds
-
-> Full details in ISSUES_ANALYSIS.md
-
-### Critical Issues
-
-| ID | Issue | Status |
-|----|-------|--------|
-| ~~SEC-001~~ | ~~CORS `origin: true`~~ | ✅ FIXED - Whitelist via CORS_ORIGINS env |
-| SEC-002 | No HTTPS | TODO - Generate SSL certs, configure nginx |
-| ~~BUG-001~~ | ~~`/stores/:id/users` 404~~ | ✅ FIXED - Endpoints implemented |
-| ~~BUG-002~~ | ~~Permissions 403 for Admin~~ | ✅ FIXED - DB reset with correct seed |
-| BE-001 | Race condition quota | TODO - Use DB constraint or locking |
-| ~~FE-001~~ | ~~Token refresh loop~~ | ✅ FIXED - Auth endpoint skip in interceptor |
-| ~~FIX-015~~ | ~~Transaction/FindOne isolation~~ | ✅ FIXED - FindOne after commit |
-| ~~FIX-016~~ | ~~Cascade save on loaded entities~~ | ✅ FIXED - manager.update() |
-
-### Feature Gaps
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| User-Role association UI | Partial | Available in user form |
-| User-Store association UI | Partial | Checkbox in user form |
-| Form dirty state | Missing | Data lost on accidental close |
-| JWT blacklist on logout | Missing | Token valid for 15min after logout |
-| Catalog CRUD views | ✅ Complete | Brands, Colors, Tags, SizeScales, Collections |
-| Products + Variants views | ✅ Complete | Master-detail with variant management |
-| Suppliers views | ✅ Complete | CRUD + detail page |
-| Purchase Orders views | ✅ Complete | CRUD + items + receive + status workflow |
-| Inventory views | ✅ Complete | Stock levels + movements log |
-
-### TypeORM Transaction Gotchas (Documented)
-
-1. **FindOne inside transaction**: `this.findOne()` uses default repository, cannot see uncommitted data. Always call `findOne()` AFTER transaction commits.
-2. **manager.save() on loaded entities**: Causes cascade re-inserts with null FKs. Use `manager.update(Entity, id, fields)` instead for entities loaded outside the transaction.
-3. **Empty string vs undefined**: `@IsUrl()` and unique constraints treat `""` differently from `undefined`/`null`. Always convert empty strings to `undefined` before sending to backend.
-
----
-
-## Development Workflows
-
-### Quick Start
-
-```bash
-# 1. Clone with submodules
-git clone --recursive https://github.com/your/rms.git
-cd rms
-
-# 2. Configure environment
-cp .env.example .env
-# Edit .env: set JWT_SECRET (min 32 chars), DB_PASSWORD
-
-# 3. Build frontend (required for nginx)
-cd rms-frontend
-npm install
-npm run build
-cd ..
-
-# 4. Start stack
-docker compose up -d
-
-# 5. Seed database
-docker compose exec backend npm run seed
-
-# 6. Access
-# http://localhost - Frontend
-# http://localhost:3000 - Backend API direct
-```
-
-### Frontend Development (Hot Reload)
-
-```bash
-cd rms-frontend
-npm run dev  # http://localhost:5173
-# Vite proxies /api/* to localhost:3000
-```
-
-### Backend Development (Hot Reload)
-
-```bash
-cd rms-backend
-npm run start:dev  # http://localhost:3000
-```
-
-### Database Operations
-
-```bash
-# Connect to psql
-docker compose exec postgres psql -U postgres -d rms_db
-
-# View tables
-\dt
-
-# Reset database
-docker compose down -v
-docker compose up -d
-docker compose exec backend npm run seed
-
-# Generate migration
-cd rms-backend
-npm run migration:generate -- src/database/migrations/DescriptionName
-
-# Run migrations
-npm run migration:run
-```
-
-### Git Submodule Workflow
-
-```bash
-# After changing backend
-cd rms-backend
-git add .
-git commit -m "Fix: description"
-git push origin main
-
-# Update parent reference
-cd ..
-git add rms-backend
-git commit -m "Update backend submodule to xyz"
-git push
-```
-
----
-
-## Testing Guide
-
-### Backend Tests
-
-```bash
-cd rms-backend
-
-# Unit tests
-npm run test
-
-# E2E tests (requires running postgres)
-npm run test:e2e
-
-# Coverage
-npm run test:cov
-```
-
-### Manual API Testing
-
-```bash
-# Login
-curl -X POST http://localhost:3000/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"superadmin@system.com","password":"Password123!"}'
-
-# Store token
-TOKEN="eyJ..."
-
-# Get users (as SuperAdmin)
-curl http://localhost:3000/users \
-  -H "Authorization: Bearer $TOKEN"
-
-# Get users (as tenant admin, simulated)
-curl http://localhost:3000/users \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "X-Tenant-Id: tenant-uuid-here"
-```
-
-### Test Credentials (after seed)
-
-| User | Email | Password | Role |
-|------|-------|----------|------|
-| SuperAdmin | superadmin@system.com | Password123! | SUPER_ADMIN |
-| Acme Admin | admin@acme.com | Password123! | ADMIN |
-| Acme User | user@acme.com | Password123! | USER |
-
----
-
-## Deployment Checklist
-
-### Pre-Production Requirements
-
-- [ ] Generate SSL certificates (`nginx/ssl/`)
-- [ ] Configure HTTPS in nginx (listen 443 ssl)
-- [ ] Add HTTP → HTTPS redirect
-- [ ] Fix CORS whitelist (`main.ts` - remove `origin: true`)
-- [ ] Change default passwords in `.env`
-- [ ] Generate secure JWT_SECRET (64+ chars random)
-- [ ] Set `NODE_ENV=production`
-- [ ] Remove test credentials from `LoginView.vue`
-- [ ] Implement JWT blacklist for logout
-- [ ] Fix race conditions in quota checks
-- [ ] Add database indexes
-- [ ] Configure log persistence for nginx
-- [ ] Disable direct backend port exposure
-
-### Environment Variables (Production)
-
-```env
-NODE_ENV=production
-JWT_SECRET=<64+ random chars>
-JWT_EXPIRATION=15m
-REFRESH_TOKEN_EXPIRATION=7d
-DB_USERNAME=rms_prod_user
-DB_PASSWORD=<strong random password>
-DB_DATABASE=rms_production
-RATE_LIMIT_TTL=900
-RATE_LIMIT_MAX=100
-```
-
----
-
-## Quick Reference
-
-### Common File Locations
+## Key Files
 
 | Need | Path |
 |------|------|
-| Global guards | `rms-backend/src/app.module.ts` |
-| JWT config | `rms-backend/src/auth/auth.module.ts` |
-| Permission decorator | `rms-backend/src/common/decorators/permissions.decorator.ts` |
-| Tenant guard logic | `rms-backend/src/common/guards/tenant.guard.ts` |
-| Frontend routes | `rms-frontend/src/router/index.ts` |
+| Guard wiring | `rms-backend/src/app.module.ts` |
+| Tenant guard | `rms-backend/src/common/guards/tenant.guard.ts` |
+| TenantBodyInterceptor | `rms-backend/src/common/interceptors/tenant-body.interceptor.ts` |
 | Auth store | `rms-frontend/src/stores/auth.store.ts` |
-| API interceptors | `rms-frontend/src/api/axios.ts` |
-| Nginx routing | `nginx/conf.d/default.conf` |
-
-### Common Patterns
-
-```typescript
-// Check if SuperAdmin (Backend)
-const isSuperAdmin = user.tenantId === null;
-
-// Get current user in controller
-@Get()
-findAll(@CurrentUser() user: User) {
-  return this.service.findAll(user);
-}
-
-// Require permission
-@Permissions('users:create')
-@Post()
-create() {}
-
-// Public endpoint (skip auth)
-@Public()
-@Post('login')
-login() {}
-
-// Get current user (Frontend)
-const authStore = useAuthStore();
-const user = authStore.user;
-const isSuperAdmin = authStore.isSuperAdmin;
-```
+| API client | `rms-frontend/src/api/axios.ts` |
+| Frontend routes | `rms-frontend/src/router/index.ts` |
+| Proxy routing | `caddy/Caddyfile` |
+| Proxy image build | `caddy/Dockerfile` |
 
 ---
 
-*Mantenere questo documento aggiornato ad ogni modifica architetturale significativa.*
+## Dev Quick Start
+
+```bash
+# Full stack (frontend is built inside the Caddy image)
+docker compose up -d && docker compose exec backend npm run seed
+# App: http://localhost | Admin: http://admin.localhost
+
+# Hot reload frontend (bypasses Caddy, hits backend directly via Vite proxy)
+cd rms-frontend && npm install && npm run dev  # http://localhost:5173
+```
+
+**Migrations (inside backend container or with local Node):**
+```bash
+cd rms-backend
+npm run migration:generate -- src/database/migrations/MigrationName
+npm run migration:run
+npm run migration:revert
+```
+
+**Test credentials (post-seed):** `superadmin@system.com` / `admin@acme.com` / `user@acme.com` — all use `Password123!`
+
+---
+
+## Open Issues
+
+| ID | Issue | Status |
+|----|-------|--------|
+| BE-001 | Quota check race condition | TODO — needs DB-level locking |
+
+---
+
+*For API contracts, entity schemas, DTO details, or module internals — read source files directly or spawn a Haiku 4.5 subagent.*

@@ -81,7 +81,9 @@ services:
   # Per switchare: commenta caddy, decommenta nginx
   # =========================================================================
   caddy:
-    image: caddy:2-alpine
+    build:
+      context: .
+      dockerfile: caddy/Dockerfile
     container_name: rms_caddy
     restart: unless-stopped
     ports:
@@ -90,7 +92,6 @@ services:
       - '${CADDY_HTTPS_PORT:-443}:443/udp'  # HTTP/3 (QUIC)
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./rms-frontend/dist:/srv/frontend:ro
       - caddy_data:/data       # Certificates storage
       - caddy_config:/config   # Caddy runtime config
     depends_on:
