@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RMS — Mockup v2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:        #F7F5F2;
+      --surface:   #FFFFFF;
+      --border:    #E8E4DF;
+      --t1:        #1C1C1E;
+      --t2:        #6E6E73;
+      --t3:        #AEAEB2;
+      --cassa:     #FF6B35;
+      --magazzino: #2563EB;
+      --admin:     #7C3AED;
+      --addons:    #9CA3AF;
+      --green:     #16A34A;
+      --green-bg:  #ECFDF5;
+      --sh-sm: 0 1px 4px rgba(0,0,0,0.07);
+      --sh-md: 0 4px 16px rgba(0,0,0,0.09);
+      --sh-lg: 0 8px 32px rgba(0,0,0,0.12);
+      --tr: 180ms ease;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--t1);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─── HEADER ─── */
+    .hdr {
+      position: fixed; top: 0; left: 0; right: 0; height: 64px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; padding: 0 28px; gap: 16px;
+      z-index: 200;
+    }
+    .hdr-logo {
+      display: flex; align-items: center; gap: 9px;
+      font-weight: 800; font-size: 17px; letter-spacing: -0.5px;
+      color: var(--t1); text-decoration: none; flex-shrink: 0;
+      cursor: pointer;
+    }
+    .hdr-logo-mark {
+      width: 30px; height: 30px;
+      background: var(--t1); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      position: relative; overflow: hidden;
+    }
+    /* small diagonal stamp on logo */
+    .hdr-logo-mark::after {
+      content: '';
+      position: absolute; top: 0; right: 0;
+      border-left: 14px solid transparent;
+      border-top: 14px solid rgba(255,107,53,0.5);
+    }
+    .hdr-logo-mark svg { width: 16px; height: 16px; stroke: white; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; position: relative; z-index: 1; }
+
+    .hdr-search { flex: 1; max-width: 440px; margin: 0 auto; position: relative; }
+    .hdr-search input {
+      width: 100%; height: 38px;
+      background: var(--bg); border: 1.5px solid transparent; border-radius: 9999px;
+      padding: 0 16px 0 40px;
+      font-family: inherit; font-size: 13px; color: var(--t1); outline: none;
+      transition: var(--tr);
+    }
+    .hdr-search input::placeholder { color: var(--t3); }
+    .hdr-search input:focus { background: var(--surface); border-color: var(--border); box-shadow: var(--sh-sm); }
+    .hdr-search-ico {
+      position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+      width: 15px; height: 15px; pointer-events: none; color: var(--t3);
+    }
+    .hdr-search-ico svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    .search-panel {
+      position: absolute; top: calc(100% + 8px); left: 0; right: 0;
+      background: var(--surface); border-radius: 16px;
+      box-shadow: var(--sh-lg); border: 1px solid var(--border);
+      display: none; z-index: 300; overflow: hidden;
+    }
+    .search-panel.open { display: block; }
+    .sp-item { display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px; cursor: pointer; transition: background var(--tr); }
+    .sp-item:hover { background: var(--bg); }
+    .sp-item + .sp-item { border-top: 1px solid var(--border); }
+    .sp-thumb { width: 44px; height: 44px; border-radius: 10px; background: var(--bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .sp-thumb svg { width: 20px; height: 20px; stroke: var(--t2); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .sp-name { font-size: 13px; font-weight: 600; }
+    .sp-sku  { font-size: 11px; color: var(--t3); margin-top: 2px; }
+    .sp-stock { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 7px; }
+    .sp-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 9999px; }
+    .sp-badge.ok  { background: var(--green-bg); color: var(--green); }
+    .sp-badge.low { background: #FFF7ED; color: #EA580C; }
+    .sp-badge.out { background: #FEF2F2; color: #DC2626; }
+    .sp-hint { padding: 9px 16px; font-size: 11px; color: var(--t3); text-align: center; background: var(--bg); border-top: 1px solid var(--border); }
+
+    .hdr-right { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-shrink: 0; }
+    .store-pill {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: 9999px;
+      background: var(--bg); font-size: 12px; font-weight: 600; color: var(--t2);
+      cursor: pointer; transition: background var(--tr); user-select: none;
+    }
+    .store-pill:hover { background: var(--border); }
+    .store-pill svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .avatar {
+      width: 34px; height: 34px; border-radius: 9999px;
+      background: var(--t1); color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+
+    /* ─── LAYOUT ─── */
+    .main { padding-top: 64px; }
+    .page { display: none; }
+    .page.on { display: block; animation: fadeUp 200ms ease both; }
+    @keyframes fadeUp { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
+
+    .wrap { max-width: 1160px; margin: 0 auto; padding: 40px 32px; }
+
+    /* ─── BREADCRUMB ─── */
+    .bc { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--t3); margin-bottom: 28px; }
+    .bc-item { cursor: pointer; color: var(--t2); font-weight: 500; transition: color var(--tr); }
+    .bc-item:hover { color: var(--t1); }
+    .bc-sep { font-size: 11px; }
+    .bc-cur { color: var(--t1); font-weight: 700; }
+
+    /* ─── HOME PAGE — VIEWPORT FILL ─── */
+    #page-home { height: calc(100vh - 64px); overflow: hidden; }
+    #page-home .wrap {
+      height: 100%; display: flex; flex-direction: column;
+      padding: 28px 32px 20px;
+    }
+
+    /* ─── HOME — GREETING ─── */
+    .greeting { margin-bottom: 20px; flex-shrink: 0; }
+    .greeting h1 { font-size: 28px; font-weight: 900; letter-spacing: -1px; }
+    .greeting p  { font-size: 13px; color: var(--t2); margin-top: 5px; }
+
+    /* ─── HOME — SECTION CARDS ─── */
+    .section-grid {
+      flex: 1; min-height: 0; /* critical for flex shrink */
+      display: grid;
+      /* columns + rows set dynamically by JS */
+      gap: 14px;
+    }
+
+    .sc {
+      background: var(--surface); border-radius: 20px;
+      padding: 24px 24px 20px;
+      box-shadow: var(--sh-sm);
+      cursor: pointer; position: relative; overflow: hidden;
+      transition: box-shadow var(--tr), transform var(--tr);
+      border: 1.5px solid transparent;
+      display: flex; flex-direction: column; /* fill height */
+    }
+    .sc:hover { box-shadow: var(--sh-lg); transform: translateY(-2px); }
+
+    /* Diagonal stamp — scales with card width */
+    .sc-stamp-wrap {
+      position: absolute; top: 0; right: 0;
+      width: clamp(58px, 16%, 119px);
+      aspect-ratio: 80 / 64;
+    }
+    .sc-stamp {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    }
+    .sc-stamp-icon {
+      position: absolute; top: 18%; right: 10%;
+      width: 42%; height: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .sc-stamp-icon svg { width: 60%; height: 60%; stroke: white; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    .sc-micro  { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--t3); margin-bottom: 10px; }
+    .sc-name   { font-size: 36px; font-weight: 900; letter-spacing: -2px; line-height: 1; margin-bottom: 10px; }
+    .sc-rule   { height: 3px; width: 36px; border-radius: 2px; margin-bottom: 12px; }
+    .sc-desc   { font-size: 13px; color: var(--t2); line-height: 1.6; }
+    .sc-spacer { flex: 1; } /* pushes action list to bottom */
+
+    /* Sub-action list inside card */
+    .sc-actions {
+      border-top: 1px solid var(--border); margin-top: 14px; padding-top: 10px;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .sc-action-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 10px; border-radius: 10px;
+      font-size: 13px; font-weight: 600; color: var(--t1);
+      transition: background var(--tr);
+    }
+    .sc-action-row:hover { background: var(--bg); }
+    .sc-action-row svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
+    /* Full-width CTA button */
+    .sc-btn {
+      margin-top: 12px; width: 100%; padding: 12px;
+      border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;
+      font-size: 13px; font-weight: 700; color: white;
+      transition: filter var(--tr), transform var(--tr);
+    }
+    .sc-btn:hover { filter: brightness(0.9); }
+    .sc-btn svg { width: 14px; height: 14px; stroke: white; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* Color variants */
+    .sc.cassa     .sc-name { color: var(--cassa); }
+    .sc.cassa     .sc-rule { background: var(--cassa); }
+    .sc.cassa     .sc-action-row svg { stroke: var(--cassa); }
+    .sc.cassa     .sc-btn  { background: var(--cassa); }
+    .sc.cassa:hover         { border-color: rgba(255,107,53,0.2); }
+
+    .sc.magazzino .sc-name { color: var(--magazzino); }
+    .sc.magazzino .sc-rule { background: var(--magazzino); }
+    .sc.magazzino .sc-action-row svg { stroke: var(--magazzino); }
+    .sc.magazzino .sc-btn  { background: var(--magazzino); }
+    .sc.magazzino:hover     { border-color: rgba(37,99,235,0.2); }
+
+    .sc.admin     .sc-name { color: var(--admin); }
+    .sc.admin     .sc-rule { background: var(--admin); }
+    .sc.admin     .sc-action-row svg { stroke: var(--admin); }
+    .sc.admin     .sc-btn  { background: var(--admin); }
+    .sc.admin:hover         { border-color: rgba(124,58,237,0.2); }
+
+    .sc.addons    .sc-name { color: var(--addons); }
+    .sc.addons    .sc-rule { background: var(--addons); }
+    .sc.addons    .sc-action-row svg { stroke: var(--addons); }
+    .sc.addons    .sc-btn  { background: var(--addons); }
+
+    /* ─── SECTION PAGE — HERO HEADER ─── */
+    .section-hero {
+      position: relative; overflow: hidden;
+      background: var(--surface); border-radius: 20px;
+      height: 180px; margin-bottom: 24px;
+      box-shadow: var(--sh-sm);
+    }
+    .hero-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    /* Icon lives inside the triangle — top-right */
+    .hero-icon {
+      position: absolute; top: 28px; right: 36px;
+      width: 48px; height: 48px;
+      display: flex; align-items: center; justify-content: center; z-index: 2;
+    }
+    .hero-icon svg { width: 26px; height: 26px; stroke: white; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .hero-content {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      left: 48px; max-width: 60%; z-index: 2;
+    }
+    .hero-micro { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--t3); margin-bottom: 8px; }
+    .hero-title { font-size: 56px; font-weight: 900; letter-spacing: -3px; line-height: 1; color: var(--t1); margin-bottom: 10px; }
+    .hero-rule  { height: 3px; width: 48px; border-radius: 2px; margin-bottom: 10px; }
+    .hero-sub   { font-size: 14px; color: var(--t2); }
+
+    /* ─── STAT CARDS ─── */
+    .stats-row { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .stat-card {
+      background: var(--surface); border-radius: 16px;
+      padding: 18px 20px; box-shadow: var(--sh-sm);
+      flex: 1; min-width: 130px; position: relative; overflow: hidden;
+    }
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; border-radius: 2px; }
+    .stat-card.cassa::before     { background: var(--cassa); }
+    .stat-card.magazzino::before { background: var(--magazzino); }
+    .stat-card.admin::before     { background: var(--admin); }
+    .stat-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--t3); margin-bottom: 6px; padding-left: 8px; }
+    .stat-num { font-size: 32px; font-weight: 900; letter-spacing: -2px; padding-left: 8px; }
+    .stat-sub { font-size: 11px; color: var(--t2); margin-top: 3px; padding-left: 8px; }
+    .stat-badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 9999px; background: var(--green-bg); color: var(--green); margin-left: 6px; vertical-align: middle; }
+    .stat-badge.warn { background: #FFF7ED; color: #EA580C; }
+
+    /* ─── ACTION SUB-CARDS ─── */
+    .action-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+    .ac {
+      background: var(--surface); border-radius: 16px;
+      padding: 20px; box-shadow: var(--sh-sm);
+      cursor: pointer; transition: box-shadow var(--tr), transform var(--tr);
+      border: 1.5px solid transparent;
+    }
+    .ac:hover { box-shadow: var(--sh-md); transform: translateY(-1px); }
+    .ac-icon {
+      width: 42px; height: 42px; border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 12px;
+    }
+    .ac-icon svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .ac-title { font-size: 14px; font-weight: 700; margin-bottom: 5px; }
+    .ac-desc  { font-size: 12px; color: var(--t2); line-height: 1.5; }
+    .ac.dim   { opacity: 0.55; cursor: default; }
+    .ac.dim:hover { box-shadow: var(--sh-sm); transform: none; }
+    .coming { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--addons); background: #F3F4F6; padding: 2px 7px; border-radius: 9999px; display: inline-block; margin-top: 6px; }
+
+    .ac.cassa     .ac-icon { background: rgba(255,107,53,0.08); color: var(--cassa); }
+    .ac.cassa:hover { border-color: rgba(255,107,53,0.3); }
+    .ac.magazzino .ac-icon { background: rgba(37,99,235,0.08);  color: var(--magazzino); }
+    .ac.magazzino:hover { border-color: rgba(37,99,235,0.3); }
+    .ac.admin     .ac-icon { background: rgba(124,58,237,0.08); color: var(--admin); }
+    .ac.admin:hover { border-color: rgba(124,58,237,0.3); }
+    .ac.addons    .ac-icon { background: #F3F4F6; color: var(--addons); }
+
+    /* ─── POS LAYOUT ─── */
+    .pos-wrap {
+      display: grid; grid-template-columns: 1fr 400px;
+      gap: 16px; height: calc(100vh - 64px - 64px); /* header + breadcrumb area */
+      min-height: 600px;
+    }
+
+    /* LEFT — product area */
+    .pos-left { display: flex; flex-direction: column; gap: 16px; }
+    .pos-search {
+      background: var(--surface); border-radius: 14px;
+      padding: 14px 18px; box-shadow: var(--sh-sm);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .pos-search svg { width: 16px; height: 16px; stroke: var(--t3); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+    .pos-search input {
+      border: none; outline: none; font-family: inherit; font-size: 14px;
+      color: var(--t1); background: transparent; width: 100%;
+    }
+    .pos-search input::placeholder { color: var(--t3); }
+    .pos-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--t3); }
+    .prod-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; flex: 1; align-content: start; }
+    .prod-card {
+      background: var(--surface); border-radius: 16px;
+      padding: 16px; box-shadow: var(--sh-sm);
+      cursor: pointer; transition: box-shadow var(--tr), transform var(--tr);
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .prod-card:hover { box-shadow: var(--sh-md); transform: translateY(-1px); }
+    .prod-img {
+      height: 80px; border-radius: 10px; background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .prod-img svg { width: 28px; height: 28px; stroke: var(--t3); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    .prod-name  { font-size: 12px; font-weight: 600; line-height: 1.4; }
+    .prod-price { font-size: 14px; font-weight: 800; letter-spacing: -0.5px; color: var(--cassa); }
+    .prod-add {
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      padding: 7px; border-radius: 9px;
+      background: var(--cassa); color: white;
+      font-size: 11px; font-weight: 700;
+    }
+    .prod-add svg { width: 13px; height: 13px; stroke: white; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* RIGHT — cart */
+    .pos-right {
+      background: var(--surface); border-radius: 20px;
+      box-shadow: var(--sh-sm);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .cart-header {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .cart-title { font-size: 16px; font-weight: 800; letter-spacing: -0.5px; }
+    .cart-clear { font-size: 12px; font-weight: 600; color: var(--t3); cursor: pointer; }
+    .cart-customer {
+      padding: 12px 20px; background: rgba(255,107,53,0.04);
+      border-bottom: 1px solid var(--border);
+      font-size: 12px; color: var(--t2); display: flex; align-items: center; gap: 8px;
+    }
+    .cart-customer svg { width: 14px; height: 14px; stroke: var(--t3); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .cart-link { color: var(--cassa); font-weight: 600; cursor: pointer; margin-left: auto; }
+    .cart-items { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+    .cart-item { display: flex; align-items: center; gap: 12px; }
+    .cart-item-name { flex: 1; font-size: 13px; font-weight: 600; }
+    .cart-item-sub  { font-size: 11px; color: var(--t3); margin-top: 1px; }
+    .qty-ctrl { display: flex; align-items: center; gap: 8px; }
+    .qty-btn { width: 26px; height: 26px; border-radius: 8px; background: var(--bg); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; font-weight: 700; color: var(--t2); user-select: none; }
+    .qty-num { font-size: 13px; font-weight: 700; width: 20px; text-align: center; }
+    .cart-item-price { font-size: 13px; font-weight: 700; }
+    .cart-divider { height: 1px; background: var(--border); }
+    .cart-totals { padding: 16px 20px; display: flex; flex-direction: column; gap: 7px; }
+    .cart-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--t2); }
+    .cart-row.total { font-size: 17px; font-weight: 900; letter-spacing: -0.5px; color: var(--t1); margin-top: 4px; }
+    .cart-row.total span:last-child { color: var(--cassa); }
+    .cart-actions { padding: 16px 20px; display: flex; flex-direction: column; gap: 9px; }
+    .pay-btn {
+      width: 100%; padding: 15px; border-radius: 14px;
+      font-family: inherit; font-size: 14px; font-weight: 800; letter-spacing: 0.3px;
+      border: none; cursor: pointer; transition: var(--tr);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .pay-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .pay-btn.primary { background: var(--cassa); color: white; }
+    .pay-btn.primary:hover { background: #E55A25; }
+    .pay-btn.secondary { background: var(--bg); color: var(--t1); border: 1.5px solid var(--border); }
+    .pay-btn.secondary:hover { border-color: var(--t3); }
+
+    /* ─── ANALYTICS ─── */
+    .kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 28px; }
+    .kpi-card { background: var(--surface); border-radius: 16px; padding: 22px 22px 18px; box-shadow: var(--sh-sm); }
+    .kpi-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--t3); margin-bottom: 8px; }
+    .kpi-num { font-size: 38px; font-weight: 900; letter-spacing: -2px; color: var(--t1); line-height: 1; }
+    .kpi-sub { font-size: 12px; color: var(--t2); margin-top: 6px; }
+    .kpi-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 9999px; margin-left: 4px; }
+    .kpi-badge.up   { background: var(--green-bg); color: var(--green); }
+    .kpi-badge.down { background: #FEF2F2; color: #DC2626; }
+
+    .chart-card { background: var(--surface); border-radius: 16px; padding: 24px; box-shadow: var(--sh-sm); margin-bottom: 20px; }
+    .chart-title { font-size: 14px; font-weight: 700; margin-bottom: 20px; }
+    .chart-svg { width: 100%; overflow: visible; }
+
+    .table-card { background: var(--surface); border-radius: 16px; overflow: hidden; box-shadow: var(--sh-sm); }
+    .table-head { display: grid; grid-template-columns: 32px 1fr 80px 100px; gap: 0; padding: 12px 20px; background: var(--bg); }
+    .table-head span { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--t3); }
+    .table-row { display: grid; grid-template-columns: 32px 1fr 80px 100px; gap: 0; padding: 13px 20px; border-top: 1px solid var(--border); align-items: center; }
+    .table-rank { font-size: 12px; font-weight: 700; color: var(--t3); }
+    .table-name { font-size: 13px; font-weight: 600; }
+    .table-qty  { font-size: 13px; color: var(--t2); }
+    .table-rev  { font-size: 13px; font-weight: 700; text-align: right; }
+
+    /* ─── SIDEBAR ─── */
+    .sidebar {
+      position: fixed; top: 64px; left: 0; bottom: 0;
+      width: 216px; background: var(--surface);
+      border-right: 1px solid var(--border);
+      z-index: 100; overflow-y: auto; padding: 12px 0;
+      display: none;
+    }
+    body.sidebar-on .sidebar { display: block; }
+    body.sidebar-on .main    { margin-left: 216px; }
+
+    .sb-section { border-bottom: 1px solid var(--border); }
+    .sb-head {
+      display: flex; align-items: center; gap: 9px;
+      padding: 10px 14px; cursor: pointer;
+      font-size: 13px; font-weight: 700; color: var(--t1);
+      transition: background var(--tr); user-select: none;
+    }
+    .sb-head:hover { background: var(--bg); }
+    .sb-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .sb-head-label { flex: 1; }
+    .sb-chevron {
+      width: 14px; height: 14px; stroke: var(--t3); fill: none;
+      stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;
+      transition: transform var(--tr); flex-shrink: 0;
+    }
+    .sb-section.open .sb-chevron { transform: rotate(90deg); }
+
+    .sb-subs { display: none; }
+    .sb-section.open .sb-subs { display: block; padding-bottom: 4px; }
+
+    .sb-sub {
+      display: flex; align-items: center; gap: 9px;
+      padding: 7px 14px 7px 31px;
+      font-size: 12px; font-weight: 500; color: var(--t2);
+      cursor: pointer; transition: background var(--tr), color var(--tr);
+    }
+    .sb-sub:hover { background: var(--bg); color: var(--t1); }
+    .sb-sub svg {
+      width: 13px; height: 13px; stroke: currentColor; fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;
+    }
+
+    /* ─── BREADCRUMB — hide Home for single-section roles ─── */
+    body.no-home .bc .bc-item:first-child,
+    body.no-home .bc .bc-item:first-child + .bc-sep { display: none; }
+
+    /* ─── DEMO PANEL ─── */
+    .demo {
+      position: fixed; bottom: 24px; right: 24px;
+      background: rgba(20,20,22,0.97); color: white;
+      border-radius: 20px; padding: 16px; z-index: 500;
+      min-width: 200px; box-shadow: 0 20px 48px rgba(0,0,0,0.35);
+    }
+    .demo-ttl { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: rgba(255,255,255,0.3); margin-bottom: 10px; }
+    .demo-btn {
+      display: flex; align-items: center; gap: 9px; width: 100%;
+      padding: 8px 10px; border-radius: 11px; border: none;
+      background: transparent; color: rgba(255,255,255,0.5);
+      font-family: inherit; font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: var(--tr); text-align: left;
+    }
+    .demo-btn:hover  { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.8); }
+    .demo-btn.active { background: rgba(255,255,255,0.12); color: white; }
+    .demo-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header class="hdr">
+  <a class="hdr-logo" onclick="navigate('home')">
+    <div class="hdr-logo-mark">
+      <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h12M3 18h18"/></svg>
+    </div>
+    RMS
+  </a>
+
+  <div class="hdr-search">
+    <div class="hdr-search-ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
+    <input id="searchInput" type="text" placeholder="Cerca prodotto, SKU, codice a barre…" oninput="handleSearch(this.value)" onfocus="handleSearch(this.value)">
+    <div class="search-panel" id="searchPanel"></div>
+  </div>
+
+  <div class="hdr-right">
+    <div class="store-pill">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+      <span id="storeName">Milano Centro</span>
+      <svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+    </div>
+    <div class="avatar" id="userAvatar">MC</div>
+  </div>
+</header>
+
+<!-- ══ SIDEBAR ══ -->
+<nav class="sidebar" id="sidebar"></nav>
+
+<!-- ══ MAIN ══ -->
+<main class="main">
+
+  <!-- HOME -->
+  <div class="page on" id="page-home">
+    <div class="wrap">
+      <div class="greeting">
+        <h1 id="greetingText">Buongiorno, Marco 👋</h1>
+        <p id="greetingRole">Cassiere · Milano Centro · Lunedì 23 Marzo 2026</p>
+      </div>
+      <div class="section-grid" id="sectionGrid"></div>
+    </div>
+  </div>
+
+  <!-- CASSA SECTION -->
+  <div class="page" id="page-cassa">
+    <div class="wrap">
+      <div class="bc">
+        <span class="bc-item" onclick="navigate('home')">Home</span>
+        <span class="bc-sep">›</span>
+        <span class="bc-cur">Cassa</span>
+      </div>
+
+      <div class="section-hero">
+        <svg class="hero-svg" viewBox="0 0 1160 180" preserveAspectRatio="none">
+          <polygon points="1160,0 952,0 1160,180" fill="#FF6B35"/>
+          <polygon points="942,0 957,0 1160,188 1160,180" fill="rgba(0,0,0,0.06)"/>
+        </svg>
+        <div class="hero-icon">
+          <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        </div>
+        <div class="hero-content">
+          <div class="hero-micro">POS · Vendite</div>
+          <div class="hero-title">Cassa</div>
+          <div class="hero-rule" style="background:var(--cassa)"></div>
+          <div class="hero-sub">Gestisci vendite, resi e clienti</div>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card cassa">
+          <div class="stat-lbl">Vendite oggi</div>
+          <div class="stat-num">€ 1.240 <span class="stat-badge">↑ +12%</span></div>
+          <div class="stat-sub">18 transazioni</div>
+        </div>
+        <div class="stat-card cassa">
+          <div class="stat-lbl">Scontrino medio</div>
+          <div class="stat-num">€ 68,9</div>
+          <div class="stat-sub">vs € 61,2 ieri</div>
+        </div>
+        <div class="stat-card cassa">
+          <div class="stat-lbl">Resi oggi</div>
+          <div class="stat-num">2</div>
+          <div class="stat-sub">€ 89 rimborsati</div>
+        </div>
+        <div class="stat-card cassa">
+          <div class="stat-lbl">Clienti registrati</div>
+          <div class="stat-num">142</div>
+          <div class="stat-sub">3 nuovi questa settimana</div>
+        </div>
+      </div>
+
+      <div class="action-grid">
+        <div class="ac cassa" onclick="navigate('pos')">
+          <div class="ac-icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></div>
+          <div class="ac-title">Nuova Vendita</div>
+          <div class="ac-desc">Avvia una transazione. Scansiona o cerca prodotti.</div>
+        </div>
+        <div class="ac cassa">
+          <div class="ac-icon"><svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-5.5"/></svg></div>
+          <div class="ac-title">Resi</div>
+          <div class="ac-desc">Gestisci resi e rimborsi per scontrino o articolo.</div>
+        </div>
+        <div class="ac cassa">
+          <div class="ac-icon"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+          <div class="ac-title">Clienti</div>
+          <div class="ac-desc">Anagrafica clienti, storico acquisti, fedeltà.</div>
+        </div>
+        <div class="ac cassa dim">
+          <div class="ac-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
+          <div class="ac-title">Ultime Vendite</div>
+          <div class="ac-desc">Consulta le transazioni della sessione corrente.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAGAZZINO SECTION -->
+  <div class="page" id="page-magazzino">
+    <div class="wrap">
+      <div class="bc">
+        <span class="bc-item" onclick="navigate('home')">Home</span>
+        <span class="bc-sep">›</span>
+        <span class="bc-cur">Magazzino</span>
+      </div>
+
+      <div class="section-hero">
+        <svg class="hero-svg" viewBox="0 0 1160 180" preserveAspectRatio="none">
+          <polygon points="1160,0 952,0 1160,180" fill="#2563EB"/>
+          <polygon points="942,0 957,0 1160,188 1160,180" fill="rgba(0,0,0,0.06)"/>
+        </svg>
+        <div class="hero-icon">
+          <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        </div>
+        <div class="hero-content">
+          <div class="hero-micro">Stock · Ordini</div>
+          <div class="hero-title">Magazzino</div>
+          <div class="hero-rule" style="background:var(--magazzino)"></div>
+          <div class="hero-sub">Ordini fornitori, inventario, movimenti</div>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card magazzino">
+          <div class="stat-lbl">Stock totale</div>
+          <div class="stat-num">3.412</div>
+          <div class="stat-sub">pezzi disponibili</div>
+        </div>
+        <div class="stat-card magazzino">
+          <div class="stat-lbl">Scorte basse</div>
+          <div class="stat-num">7 <span class="stat-badge warn">Attenzione</span></div>
+          <div class="stat-sub">articoli sotto soglia</div>
+        </div>
+        <div class="stat-card magazzino">
+          <div class="stat-lbl">Ordini aperti</div>
+          <div class="stat-num">3</div>
+          <div class="stat-sub">in attesa ricezione</div>
+        </div>
+        <div class="stat-card magazzino">
+          <div class="stat-lbl">Fornitori attivi</div>
+          <div class="stat-num">12</div>
+          <div class="stat-sub">2 ordini da confermare</div>
+        </div>
+      </div>
+
+      <div class="action-grid">
+        <div class="ac magazzino">
+          <div class="ac-icon"><svg viewBox="0 0 24 24"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg></div>
+          <div class="ac-title">Ricevi Merce</div>
+          <div class="ac-desc">Registra l'arrivo di un ordine fornitore.</div>
+        </div>
+        <div class="ac magazzino">
+          <div class="ac-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+          <div class="ac-title">Ordini di Acquisto</div>
+          <div class="ac-desc">Crea e gestisci ordini ai fornitori.</div>
+        </div>
+        <div class="ac magazzino">
+          <div class="ac-icon"><svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-5.5"/></svg></div>
+          <div class="ac-title">Resi al Fornitore</div>
+          <div class="ac-desc">Registra resi di merce difettosa o in eccesso.</div>
+        </div>
+        <div class="ac magazzino">
+          <div class="ac-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+          <div class="ac-title">Fornitori</div>
+          <div class="ac-desc">Anagrafica, contatti e storico ordini.</div>
+        </div>
+        <div class="ac magazzino">
+          <div class="ac-icon"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+          <div class="ac-title">Inventario</div>
+          <div class="ac-desc">Stock per articolo, variante e negozio.</div>
+        </div>
+        <div class="ac magazzino">
+          <div class="ac-icon"><svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></div>
+          <div class="ac-title">Movimenti Stock</div>
+          <div class="ac-desc">Entrate, uscite, rettifiche e trasferimenti.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN SECTION -->
+  <div class="page" id="page-admin">
+    <div class="wrap">
+      <div class="bc">
+        <span class="bc-item" onclick="navigate('home')">Home</span>
+        <span class="bc-sep">›</span>
+        <span class="bc-cur">Admin Negozio</span>
+      </div>
+
+      <div class="section-hero">
+        <svg class="hero-svg" viewBox="0 0 1160 180" preserveAspectRatio="none">
+          <polygon points="1160,0 952,0 1160,180" fill="#7C3AED"/>
+          <polygon points="942,0 957,0 1160,188 1160,180" fill="rgba(0,0,0,0.06)"/>
+        </svg>
+        <div class="hero-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </div>
+        <div class="hero-content">
+          <div class="hero-micro">Configurazione</div>
+          <div class="hero-title">Admin</div>
+          <div class="hero-rule" style="background:var(--admin)"></div>
+          <div class="hero-sub">Utenti, ruoli, prodotti e impostazioni</div>
+        </div>
+      </div>
+
+      <div class="action-grid">
+        <div class="ac admin">
+          <div class="ac-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+          <div class="ac-title">Utenti</div>
+          <div class="ac-desc">Collaboratori, inviti e accessi.</div>
+        </div>
+        <div class="ac admin">
+          <div class="ac-icon"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+          <div class="ac-title">Ruoli & Permessi</div>
+          <div class="ac-desc">Definisci ruoli e assegna i permessi.</div>
+        </div>
+        <div class="ac admin">
+          <div class="ac-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg></div>
+          <div class="ac-title">Negozi</div>
+          <div class="ac-desc">Sedi e parametri operativi.</div>
+        </div>
+        <div class="ac admin">
+          <div class="ac-icon"><svg viewBox="0 0 24 24"><polyline points="20.59 13.41 15 7.83 9.41 13.41 4 8v14h16V8z"/><line x1="4" y1="8" x2="4" y2="22"/><line x1="20" y1="8" x2="20" y2="22"/></svg></div>
+          <div class="ac-title">Catalogo</div>
+          <div class="ac-desc">Brand, collezioni, colori, taglie.</div>
+        </div>
+        <div class="ac admin" onclick="navigate('analytics')">
+          <div class="ac-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+          <div class="ac-title">Analytics</div>
+          <div class="ac-desc">Reportistica vendite, trend e prodotti top.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD-ONS SECTION -->
+  <div class="page" id="page-addons">
+    <div class="wrap">
+      <div class="bc">
+        <span class="bc-item" onclick="navigate('home')">Home</span>
+        <span class="bc-sep">›</span>
+        <span class="bc-cur">Add-ons</span>
+      </div>
+      <div class="section-hero">
+        <svg class="hero-svg" viewBox="0 0 1160 180" preserveAspectRatio="none">
+          <polygon points="1160,0 952,0 1160,180" fill="#9CA3AF"/>
+          <polygon points="942,0 957,0 1160,188 1160,180" fill="rgba(0,0,0,0.06)"/>
+        </svg>
+        <div class="hero-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        </div>
+        <div class="hero-content">
+          <div class="hero-micro">Moduli Extra</div>
+          <div class="hero-title">Add-ons</div>
+          <div class="hero-rule" style="background:var(--addons)"></div>
+          <div class="hero-sub">Espandi le funzionalità del sistema</div>
+        </div>
+      </div>
+      <div class="action-grid">
+        <div class="ac addons dim"><div class="ac-icon"><svg viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="2"/><path d="M6 12v.01M18 12v.01"/></svg></div><div class="ac-title">HR</div><div class="ac-desc">Personale, turni e presenze.</div><span class="coming">Presto</span></div>
+        <div class="ac addons dim"><div class="ac-icon"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div class="ac-title">Contabilità</div><div class="ac-desc">Prima nota e fatturazione.</div><span class="coming">Presto</span></div>
+        <div class="ac addons dim"><div class="ac-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><div class="ac-title">Analytics</div><div class="ac-desc">Report avanzati e trend.</div><span class="coming">Presto</span></div>
+        <div class="ac addons dim"><div class="ac-icon"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.5a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 21.5 16z"/></svg></div><div class="ac-title">Marketing</div><div class="ac-desc">Campagne e programmi fedeltà.</div><span class="coming">Presto</span></div>
+        <div class="ac addons dim"><div class="ac-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div><div class="ac-title">Online</div><div class="ac-desc">E-commerce integrato.</div><span class="coming">Presto</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POS VIEW -->
+  <div class="page" id="page-pos">
+    <div class="wrap" style="padding-bottom:24px">
+      <div class="bc">
+        <span class="bc-item" onclick="navigate('home')">Home</span>
+        <span class="bc-sep">›</span>
+        <span class="bc-item" onclick="navigate('cassa')">Cassa</span>
+        <span class="bc-sep">›</span>
+        <span class="bc-cur">Nuova Vendita</span>
+      </div>
+
+      <div class="pos-wrap">
+        <!-- LEFT: Products -->
+        <div class="pos-left">
+          <div class="pos-search">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" placeholder="Cerca articolo o scansiona codice a barre…">
+          </div>
+          <div class="pos-lbl">Prodotti recenti</div>
+          <div class="prod-grid">
+            <!-- product 1 -->
+            <div class="prod-card">
+              <div class="prod-img"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+              <div class="prod-name">Sneaker Bianche Urban</div>
+              <div class="prod-price">€ 89,00</div>
+              <div class="prod-add"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi</div>
+            </div>
+            <!-- product 2 -->
+            <div class="prod-card">
+              <div class="prod-img"><svg viewBox="0 0 24 24"><path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.57a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.57a2 2 0 0 0-1.34-2.23z"/></svg></div>
+              <div class="prod-name">Cappotto Grigio Classic</div>
+              <div class="prod-price">€ 149,00</div>
+              <div class="prod-add"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi</div>
+            </div>
+            <!-- product 3 -->
+            <div class="prod-card">
+              <div class="prod-img"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
+              <div class="prod-name">Borsa Pelle Nera</div>
+              <div class="prod-price">€ 210,00</div>
+              <div class="prod-add"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi</div>
+            </div>
+            <!-- product 4 -->
+            <div class="prod-card">
+              <div class="prod-img"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg></div>
+              <div class="prod-name">Cintura Cuoio Marrone</div>
+              <div class="prod-price">€ 45,00</div>
+              <div class="prod-add"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi</div>
+            </div>
+            <!-- product 5 -->
+            <div class="prod-card">
+              <div class="prod-img"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+              <div class="prod-name">Sciarpa Lana Rossa</div>
+              <div class="prod-price">€ 35,00</div>
+              <div class="prod-add"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi</div>
+            </div>
+            <!-- product 6 -->
+            <div class="prod-card">
+              <div class="prod-img"><svg viewBox="0 0 24 24"><path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.57a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.57a2 2 0 0 0-1.34-2.23z"/></svg></div>
+              <div class="prod-name">Giacca Navy Slim</div>
+              <div class="prod-price">€ 195,00</div>
+              <div class="prod-add"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Aggiungi</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Cart -->
+        <div class="pos-right">
+          <div class="cart-header">
+            <div class="cart-title">Ordine corrente</div>
+            <div class="cart-clear">Svuota</div>
+          </div>
+          <div class="cart-customer">
+            <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Cliente: <strong>Anonimo</strong>
+            <span class="cart-link">+ Associa</span>
+          </div>
+          <div class="cart-items">
+            <div class="cart-item">
+              <div style="flex:1">
+                <div class="cart-item-name">Sneaker Bianche Urban</div>
+                <div class="cart-item-sub">Taglia 42 · Bianco</div>
+              </div>
+              <div class="qty-ctrl">
+                <div class="qty-btn">−</div>
+                <div class="qty-num">1</div>
+                <div class="qty-btn">+</div>
+              </div>
+              <div class="cart-item-price" style="width:60px;text-align:right">€ 89,00</div>
+            </div>
+            <div class="cart-item">
+              <div style="flex:1">
+                <div class="cart-item-name">Cappotto Grigio Classic</div>
+                <div class="cart-item-sub">Taglia M · Grigio</div>
+              </div>
+              <div class="qty-ctrl">
+                <div class="qty-btn">−</div>
+                <div class="qty-num">2</div>
+                <div class="qty-btn">+</div>
+              </div>
+              <div class="cart-item-price" style="width:60px;text-align:right">€ 298,00</div>
+            </div>
+          </div>
+          <div class="cart-divider"></div>
+          <div class="cart-totals">
+            <div class="cart-row"><span>Subtotale</span><span>€ 387,00</span></div>
+            <div class="cart-row"><span>Sconto</span><span style="color:var(--green)">— € 0,00</span></div>
+            <div class="cart-row"><span>IVA (22%)</span><span>€ 70,22</span></div>
+            <div class="cart-row total"><span>Totale</span><span>€ 457,22</span></div>
+          </div>
+          <div class="cart-actions">
+            <button class="pay-btn primary">
+              <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+              Paga con carta
+            </button>
+            <button class="pay-btn secondary">
+              <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              Paga in contanti
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANALYTICS VIEW -->
+  <div class="page" id="page-analytics">
+    <div class="wrap">
+      <div class="bc">
+        <span class="bc-item" onclick="navigate('home')">Home</span>
+        <span class="bc-sep">›</span>
+        <span class="bc-item" onclick="navigate('admin')">Admin</span>
+        <span class="bc-sep">›</span>
+        <span class="bc-cur">Analytics</span>
+      </div>
+
+      <div style="margin-bottom:28px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--t3);margin-bottom:8px">Reportistica</div>
+        <div style="font-size:40px;font-weight:900;letter-spacing:-2px;color:var(--t1);line-height:1">Analytics</div>
+        <div style="width:40px;height:3px;background:var(--admin);border-radius:2px;margin-top:10px"></div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-lbl">Vendite oggi</div>
+          <div class="kpi-num">€ 1.240</div>
+          <div class="kpi-sub">vs ieri <span class="kpi-badge up">↑ +12%</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-lbl">Scontrini</div>
+          <div class="kpi-num">18</div>
+          <div class="kpi-sub">media € 68,9 a scontrino</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-lbl">Prodotti venduti</div>
+          <div class="kpi-num">43</div>
+          <div class="kpi-sub">vs 38 ieri <span class="kpi-badge up">↑ +13%</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-lbl">Margine medio</div>
+          <div class="kpi-num">34%</div>
+          <div class="kpi-sub">vs 31% settimana scorsa <span class="kpi-badge up">↑</span></div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">Vendite settimanali — Settimana 12, 2026</div>
+        <svg class="chart-svg" viewBox="0 0 760 200" style="height:200px">
+          <!-- grid lines -->
+          <line x1="0" y1="40"  x2="760" y2="40"  stroke="#E8E4DF" stroke-width="1"/>
+          <line x1="0" y1="90"  x2="760" y2="90"  stroke="#E8E4DF" stroke-width="1"/>
+          <line x1="0" y1="140" x2="760" y2="140" stroke="#E8E4DF" stroke-width="1"/>
+          <line x1="0" y1="185" x2="760" y2="185" stroke="#E8E4DF" stroke-width="1.5"/>
+          <!-- y labels -->
+          <text x="0" y="38"  font-family="Inter,sans-serif" font-size="10" fill="#AEAEB2" font-weight="600">€1.600</text>
+          <text x="0" y="88"  font-family="Inter,sans-serif" font-size="10" fill="#AEAEB2" font-weight="600">€1.200</text>
+          <text x="0" y="138" font-family="Inter,sans-serif" font-size="10" fill="#AEAEB2" font-weight="600">€800</text>
+          <!-- bars: x offsets 60,160,260,360,460,560,660 width=60 -->
+          <!-- Mon 980 → h=122 -->
+          <rect x="60"  y="63"  width="60" height="122" rx="8" fill="#7C3AED" opacity="0.15"/>
+          <rect x="60"  y="63"  width="60" height="122" rx="8" fill="#7C3AED" opacity="0" id="bar0"/>
+          <rect x="60"  y="113" width="60" height="72"  rx="8" fill="#7C3AED"/>
+          <!-- Tue 1260 → h=157 -->
+          <rect x="160" y="28"  width="60" height="157" rx="8" fill="#7C3AED" opacity="0.15"/>
+          <rect x="160" y="78" width="60" height="107" rx="8" fill="#7C3AED"/>
+          <!-- Wed 840 → h=105 -->
+          <rect x="260" y="80"  width="60" height="105" rx="8" fill="#7C3AED" opacity="0.15"/>
+          <rect x="260" y="125" width="60" height="60"  rx="8" fill="#7C3AED"/>
+          <!-- Thu 1400 → h=175 -->
+          <rect x="360" y="10"  width="60" height="175" rx="8" fill="#7C3AED" opacity="0.15"/>
+          <rect x="360" y="65" width="60" height="120" rx="8" fill="#7C3AED"/>
+          <!-- Fri 1540 → h=192 (highlight: today = Mon 23, but for drama let's mark Fri) -->
+          <rect x="460" y="5"   width="60" height="180" rx="8" fill="var(--cassa)" opacity="0.12"/>
+          <rect x="460" y="55"  width="60" height="130" rx="8" fill="var(--cassa)"/>
+          <text x="490" y="48" font-family="Inter,sans-serif" font-size="10" fill="var(--cassa)" font-weight="700" text-anchor="middle">€1.540</text>
+          <!-- Sat 1330 → h=166 -->
+          <rect x="560" y="19"  width="60" height="166" rx="8" fill="#7C3AED" opacity="0.15"/>
+          <rect x="560" y="79" width="60" height="106" rx="8" fill="#7C3AED"/>
+          <!-- Sun 630 → h=79 -->
+          <rect x="660" y="106" width="60" height="79"  rx="8" fill="#7C3AED" opacity="0.15"/>
+          <rect x="660" y="136" width="60" height="49"  rx="8" fill="#7C3AED" opacity="0.5"/>
+          <!-- x labels -->
+          <text x="90"  y="198" font-family="Inter,sans-serif" font-size="11" fill="#AEAEB2" font-weight="600" text-anchor="middle">Lun</text>
+          <text x="190" y="198" font-family="Inter,sans-serif" font-size="11" fill="#AEAEB2" font-weight="600" text-anchor="middle">Mar</text>
+          <text x="290" y="198" font-family="Inter,sans-serif" font-size="11" fill="#AEAEB2" font-weight="600" text-anchor="middle">Mer</text>
+          <text x="390" y="198" font-family="Inter,sans-serif" font-size="11" fill="#AEAEB2" font-weight="600" text-anchor="middle">Gio</text>
+          <text x="490" y="198" font-family="Inter,sans-serif" font-size="11" fill="var(--cassa)" font-weight="700" text-anchor="middle">Ven ★</text>
+          <text x="590" y="198" font-family="Inter,sans-serif" font-size="11" fill="#AEAEB2" font-weight="600" text-anchor="middle">Sab</text>
+          <text x="690" y="198" font-family="Inter,sans-serif" font-size="11" fill="#AEAEB2" font-weight="400" text-anchor="middle">Dom</text>
+        </svg>
+      </div>
+
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--t2);text-transform:uppercase;letter-spacing:0.5px;font-size:10px">Top prodotti questa settimana</div>
+      <div class="table-card">
+        <div class="table-head">
+          <span>#</span><span>Prodotto</span><span>Pezzi</span><span style="text-align:right">Ricavo</span>
+        </div>
+        <div class="table-row"><div class="table-rank">1</div><div class="table-name">Cappotto Grigio Classic</div><div class="table-qty">24 pz</div><div class="table-rev">€ 3.576</div></div>
+        <div class="table-row"><div class="table-rank">2</div><div class="table-name">Sneaker Bianche Urban</div><div class="table-qty">31 pz</div><div class="table-rev">€ 2.759</div></div>
+        <div class="table-row"><div class="table-rank">3</div><div class="table-name">Borsa Pelle Nera</div><div class="table-qty">11 pz</div><div class="table-rev">€ 2.310</div></div>
+        <div class="table-row"><div class="table-rank">4</div><div class="table-name">Giacca Navy Slim</div><div class="table-qty">12 pz</div><div class="table-rev">€ 2.340</div></div>
+        <div class="table-row"><div class="table-rank">5</div><div class="table-name">Cintura Cuoio Marrone</div><div class="table-qty">28 pz</div><div class="table-rev">€ 1.260</div></div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<!-- ══ DEMO PANEL ══ -->
+<div class="demo">
+  <div class="demo-ttl">👀 Demo — Ruolo utente</div>
+  <button class="demo-btn active" id="btn-cassiere"     onclick="setRole('cassiere')"><div class="demo-dot" style="background:var(--cassa)"></div>Cassiere</button>
+  <button class="demo-btn"        id="btn-magazziniere" onclick="setRole('magazziniere')"><div class="demo-dot" style="background:var(--magazzino)"></div>Magazziniere</button>
+  <button class="demo-btn"        id="btn-admin"        onclick="setRole('admin')"><div class="demo-dot" style="background:var(--admin)"></div>Admin Negozio</button>
+  <button class="demo-btn"        id="btn-superadmin"   onclick="setRole('superadmin')"><div class="demo-dot" style="background:#fff;border:1px solid rgba(255,255,255,0.3)"></div>SuperAdmin</button>
+</div>
+
+<script>
+  /* ── SVG ICONS (reused inline) ── */
+  const ICONS = {
+    cassa:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>`,
+    magazzino: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
+    admin:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+    addons:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`,
+    arrow:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`,
+  };
+
+  const ROLES = {
+    cassiere:     { name:'Marco Colombo',  initials:'MC', label:'Cassiere',      store:'Milano Centro', sections:['cassa'] },
+    magazziniere: { name:'Sara Rossi',     initials:'SR', label:'Magazziniere',  store:'Milano Centro', sections:['magazzino'] },
+    admin:        { name:'Luca Bianchi',   initials:'LB', label:'Admin Negozio', store:'Milano Centro', sections:['cassa','magazzino','admin'] },
+    superadmin:   { name:'Admin Sistema',  initials:'AS', label:'SuperAdmin',    store:'Tutti i negozi', sections:['cassa','magazzino','admin','addons'] },
+  };
+
+  const ACT_ICONS = {
+    cart:    `<svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>`,
+    return:  `<svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-5.5"/></svg>`,
+    user:    `<svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+    inbox:   `<svg viewBox="0 0 24 24"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>`,
+    order:   `<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>`,
+    stock:   `<svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
+    truck:   `<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+    move:    `<svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`,
+    lock:    `<svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
+    users:   `<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+    chart:   `<svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`,
+    catalog: `<svg viewBox="0 0 24 24"><polyline points="20.59 13.41 15 7.83 9.41 13.41 4 8v14h16V8z"/><line x1="4" y1="8" x2="4" y2="22"/><line x1="20" y1="8" x2="20" y2="22"/></svg>`,
+    plug:    `<svg viewBox="0 0 24 24"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>`,
+  };
+
+  const SECTIONS = {
+    cassa: {
+      icon:'cassa', color:'cassa', colorHex:'#FF6B35', tag:'POS · Vendite', name:'Cassa',
+      desc:'Gestisci vendite, resi e clienti dal punto cassa.',
+      actions: [
+        { label:'Nuova Vendita', icon: ACT_ICONS.cart,   target:'pos' },
+        { label:'Resi',          icon: ACT_ICONS.return, target:'cassa' },
+        { label:'Clienti',       icon: ACT_ICONS.user,   target:'cassa' },
+      ],
+    },
+    magazzino: {
+      icon:'magazzino', color:'magazzino', colorHex:'#2563EB', tag:'Stock · Ordini', name:'Magazzino',
+      desc:'Ordini fornitori, inventario e movimenti di stock.',
+      actions: [
+        { label:'Ricevi Merce',      icon: ACT_ICONS.inbox, target:'magazzino' },
+        { label:'Ordini di Acquisto',icon: ACT_ICONS.order, target:'magazzino' },
+        { label:'Inventario',        icon: ACT_ICONS.stock, target:'magazzino' },
+        { label:'Movimenti Stock',   icon: ACT_ICONS.move,  target:'magazzino' },
+      ],
+    },
+    admin: {
+      icon:'admin', color:'admin', colorHex:'#7C3AED', tag:'Configurazione', name:'Admin',
+      desc:'Utenti, ruoli, prodotti e impostazioni del punto vendita.',
+      actions: [
+        { label:'Utenti',          icon: ACT_ICONS.users,   target:'admin' },
+        { label:'Ruoli & Permessi',icon: ACT_ICONS.lock,    target:'admin' },
+        { label:'Analytics',       icon: ACT_ICONS.chart,   target:'analytics' },
+        { label:'Catalogo',        icon: ACT_ICONS.catalog, target:'admin' },
+      ],
+    },
+    addons: {
+      icon:'addons', color:'addons', colorHex:'#9CA3AF', tag:'Moduli Extra', name:'Add-ons',
+      desc:'Moduli aggiuntivi: HR, contabilità, analytics e molto altro.',
+      actions: [
+        { label:'HR',         icon: ACT_ICONS.users, target:'addons' },
+        { label:'Contabilità',icon: ACT_ICONS.chart, target:'addons' },
+        { label:'Online',     icon: ACT_ICONS.plug,  target:'addons' },
+      ],
+    },
+  };
+
+  const PRODUCTS = [
+    { name:'Sneaker Bianche Urban', sku:'SNK-WH-42', stock:[{store:'Milano Centro',qty:3,s:'ok'},{store:'Roma Prati',qty:1,s:'low'},{store:'Torino Po',qty:0,s:'out'}] },
+    { name:'Cappotto Grigio Classic', sku:'CPT-GR-M', stock:[{store:'Milano Centro',qty:2,s:'low'},{store:'Roma Prati',qty:5,s:'ok'},{store:'Torino Po',qty:2,s:'low'}] },
+    { name:'Borsa Pelle Nera', sku:'BRS-BK-001', stock:[{store:'Milano Centro',qty:8,s:'ok'},{store:'Roma Prati',qty:0,s:'out'},{store:'Torino Po',qty:4,s:'ok'}] },
+    { name:'Cintura Cuoio Marrone', sku:'CNT-BR-85', stock:[{store:'Milano Centro',qty:6,s:'ok'},{store:'Roma Prati',qty:3,s:'ok'}] },
+    { name:'Sciarpa Lana Rossa', sku:'SCR-RD-UNI', stock:[{store:'Milano Centro',qty:0,s:'out'},{store:'Roma Prati',qty:7,s:'ok'},{store:'Torino Po',qty:1,s:'low'}] },
+  ];
+
+  let currentRole = 'cassiere';
+
+  /* Which top-level section owns a given page id */
+  function getActiveSectionKey(id) {
+    const sections = ROLES[currentRole].sections;
+    if (sections.includes(id)) return id;
+    for (const key of sections) {
+      if (SECTIONS[key].actions.some(a => a.target === id)) return key;
+    }
+    return null;
+  }
+
+  function renderSidebar(sections, activeSectionKey) {
+    document.getElementById('sidebar').innerHTML = sections.map(key => {
+      const s = SECTIONS[key];
+      const isOpen = key === activeSectionKey;
+      const subs = s.actions.map(a => `
+        <div class="sb-sub" onclick="navigate('${a.target}')">
+          ${a.icon}${a.label}
+        </div>`).join('');
+      return `
+        <div class="sb-section ${isOpen ? 'open' : ''}" data-key="${key}">
+          <div class="sb-head" onclick="sbNavigate('${key}')">
+            <div class="sb-dot" style="background:var(--${key})"></div>
+            <span class="sb-head-label">${s.name}</span>
+            <svg class="sb-chevron" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+          <div class="sb-subs">${subs}</div>
+        </div>`;
+    }).join('');
+  }
+
+  function sbNavigate(key) {
+    /* Toggle open; always navigate to the section */
+    const el = document.querySelector(`.sb-section[data-key="${key}"]`);
+    const wasOpen = el && el.classList.contains('open');
+    document.querySelectorAll('.sb-section').forEach(s => s.classList.remove('open'));
+    if (!wasOpen && el) el.classList.add('open');
+    navigate(key);
+  }
+
+  function setRole(key) {
+    currentRole = key;
+    const r = ROLES[key];
+    document.querySelectorAll('.demo-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('btn-' + key).classList.add('active');
+    document.getElementById('userAvatar').textContent = r.initials;
+    document.getElementById('storeName').textContent = r.store;
+    const h = new Date().getHours();
+    const g = h < 12 ? 'Buongiorno' : h < 18 ? 'Buon pomeriggio' : 'Buonasera';
+    document.getElementById('greetingText').textContent = `${g}, ${r.name.split(' ')[0]} 👋`;
+    document.getElementById('greetingRole').textContent = `${r.label} · ${r.store} · Lunedì 23 Marzo 2026`;
+    // Mark body for single-section roles (hides Home breadcrumb)
+    document.body.classList.toggle('no-home', r.sections.length === 1);
+    renderGrid(r.sections);
+    if (r.sections.length === 1) {
+      navigate(r.sections[0]);
+    } else {
+      navigate('home');
+    }
+  }
+
+  function renderGrid(sections) {
+    const n = sections.length;
+    const grid = document.getElementById('sectionGrid');
+
+    // Layout: 1 row for ≤2, 2 rows for 3–7, 3 rows for 8+
+    let cols, rows;
+    if (n <= 2)      { cols = n;                    rows = 1; }
+    else if (n <= 7) { cols = Math.ceil(n / 2);     rows = 2; }
+    else             { cols = Math.ceil(n / 3);     rows = 3; }
+
+    grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    grid.style.gridTemplateRows    = `repeat(${rows}, 1fr)`;
+
+    grid.innerHTML = sections.map(key => {
+      const s = SECTIONS[key];
+      const actionRows = s.actions.map(a => `
+        <div class="sc-action-row" onclick="event.stopPropagation(); navigate('${a.target}')">
+          ${a.icon}${a.label}
+        </div>`).join('');
+      return `
+        <div class="sc ${s.color}" onclick="navigate('${key}')">
+          <div class="sc-stamp-wrap">
+            <svg class="sc-stamp" viewBox="0 0 80 64"><polygon points="0,0 80,0 80,64" fill="${s.colorHex}"/></svg>
+            <div class="sc-stamp-icon">${ICONS[s.icon]}</div>
+          </div>
+          <div class="sc-micro">${s.tag}</div>
+          <div class="sc-name">${s.name}</div>
+          <div class="sc-rule"></div>
+          <div class="sc-desc">${s.desc}</div>
+          <div class="sc-spacer"></div>
+          <div class="sc-actions">${actionRows}</div>
+          <div class="sc-btn">Apri ${s.name} ${ICONS.arrow}</div>
+        </div>`;
+    }).join('');
+  }
+
+  function navigate(id) {
+    const r = ROLES[currentRole];
+    // Single-section roles: "Home" goes straight to their section
+    if (id === 'home' && r.sections.length === 1) id = r.sections[0];
+
+    const isHome = id === 'home';
+    document.body.classList.toggle('sidebar-on', !isHome);
+
+    if (!isHome) {
+      const activeKey = getActiveSectionKey(id);
+      renderSidebar(r.sections, activeKey);
+    }
+
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+    const el = document.getElementById('page-' + id);
+    if (el) { el.classList.add('on'); window.scrollTo({top:0,behavior:'smooth'}); }
+    closeSearch();
+  }
+
+  /* ── Search ── */
+  function handleSearch(v) {
+    const panel = document.getElementById('searchPanel');
+    const q = v.trim().toLowerCase();
+    if (q.length < 2) { panel.classList.remove('open'); return; }
+    const res = PRODUCTS.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
+    if (!res.length) {
+      panel.innerHTML = `<div style="padding:20px;text-align:center;font-size:13px;color:var(--t3)">Nessun risultato per "<b>${v}</b>"</div>`;
+    } else {
+      panel.innerHTML = res.map(p => `
+        <div class="sp-item">
+          <div class="sp-thumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+          <div style="flex:1">
+            <div class="sp-name">${p.name}</div>
+            <div class="sp-sku">SKU: ${p.sku}</div>
+            <div class="sp-stock">${p.stock.map(s=>`<span class="sp-badge ${s.s}">${s.store}: ${s.qty>0?s.qty+' pz':'Esaurito'}</span>`).join('')}</div>
+          </div>
+        </div>`).join('') + `<div class="sp-hint">Invio per cercare in tutto il catalogo</div>`;
+    }
+    panel.classList.add('open');
+  }
+
+  function closeSearch() {
+    document.getElementById('searchPanel').classList.remove('open');
+    document.getElementById('searchInput').value = '';
+  }
+
+  document.addEventListener('click', e => { if (!e.target.closest('.hdr-search')) closeSearch(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSearch(); });
+
+  /* ── Init ── */
+  setRole('cassiere');
+</script>
+</body>
+</html>
