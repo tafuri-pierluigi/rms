@@ -29,6 +29,21 @@
 
 ---
 
+## Recently Fixed (Hotfixes)
+
+### Icon & Routing Fixes
+- [x] **Icon — Boxes instead of BoxesStacked**
+  - Location: `src/config/navigation.ts:55`
+  - Details: Changed icon from `BoxesStacked` to `Boxes` for better semantic match
+  - **Fixed:** March 25, 2026
+
+- [x] **Route ordering — prevent UUID misinterpretation**
+  - Location: `rms-backend/src/modules/inventory/inventory.controller.ts`
+  - Details: Reordered routes so specific `stock/store/:storeId/low` and `stock/store/:storeId` come before generic `stock/:variantId/:storeId`. Prevents NestJS from incorrectly binding "store" as a variantId UUID.
+  - **Fixed:** March 25, 2026
+
+---
+
 ## Features (To Be Developed)
 
 ### PO Returns Feature
@@ -45,7 +60,7 @@
   - Complexity: High (multi-step workflow + stock updates)
 
 ### Catalogue Section (New)
-- [ ] **Create new "Catalogue" section widget on home page**
+- [x] **Create new "Catalogue" section widget on home page**
   - Details: Move items from Warehouse to new Catalogue section
   - Items to move:
     - Products
@@ -56,19 +71,28 @@
     - Size Scales
     - Tags
   - Requirements:
-    - [ ] Assign section color (to be determined)
-    - [ ] Update navigation config (`src/config/navigation.ts`)
-    - [ ] Update section styling/accents
-    - [ ] Update related routes and permissions
-  - Impact: Information architecture redesign
-  - Complexity: High (affects navigation, routing, styling)
+    - [x] Assign section color — #10B981 Emerald green
+    - [x] Update navigation config (`src/config/navigation.ts`)
+    - [x] Update section styling/accents (`src/styles/main.scss`)
+    - [x] Update related routes and permissions (`src/router/index.ts`)
+  - **Fixed:** March 25, 2026 — Full implementation complete:
+    - `CatalogoView.vue` (new hub page) displays all 7 catalog items
+    - `src/config/navigation.ts`: New `catalogo` section with 7 items and `hubRoute: 'tenant-catalogo'`
+    - `src/styles/main.scss`: Added `.section-catalogo` styling with #10B981 (emerald)
+    - `src/router/index.ts`: 9 routes updated from `'magazzino'` → `'catalogo'` meta; added `tenant-catalogo` route
+    - `MagazzinoView.vue`: Simplified to render only 4 operational items (POs, Inventory, Stock Movements)
+    - Sidebar cleanup: Removed nested catalog expander and special-case code from `TheSidebar.vue`
 
 ### Admin "Explore" Button
-- [ ] **Update Admin "Explore" button behavior**
+- [x] **Update Admin "Explore" button behavior**
   - Current: Links directly to users management
   - Target: Opens full admin section (like magazzino does)
   - Impact: Consistent navigation patterns
   - Complexity: Low
+  - **Fixed:** March 25, 2026 — Full implementation complete:
+    - `src/config/navigation.ts`: Added `hubRoute: 'tenant-admin-hub'` to tenant admin section
+    - `src/router/index.ts`: Added `tenant-admin-hub` route
+    - `TenantAdminHubView.vue` (new hub page): Displays Users, Roles, and Stores with consistent navigation pattern
 
 ---
 
@@ -112,14 +136,27 @@
   - Status: Pending
   - Complexity: Medium (involves auth state, permission store, component visibility)
 
+- [ ] **Homepage widgets & subsection-level permission filtering**
+  - Details: Validate that homepage widgets dynamically filter content at both section level (admin, magazzino, cassa, add-ons) AND subsection level (products, purchase orders, suppliers, inventory, sell, customers, users, roles, etc.)
+  - Scope:
+    - [ ] Section-level filtering: Users only see section widgets they have access to
+    - [ ] Subsection-level filtering: Within each section, only accessible subsection items are shown
+    - [ ] Section colors and styling respect permission-based visibility
+    - [ ] Widget content updates dynamically as permissions change
+  - Test scenarios:
+    - User with limited "magazzino" permissions sees only accessible subsections (e.g., products but not inventory)
+    - User without "cassa" access sees no cassa widget or section
+    - Admin/SuperAdmin see all sections and subsections
+    - Store-level visibility assignments properly filter subsection access
+  - Status: Pending
+  - Complexity: Medium (involves permission store state, widget rendering, dynamic content filtering)
+
 ---
 
 ## Development Notes
 
-- **Warehouse section items** should eventually move to Catalogue (see Features)
 - **Stock impact calculations** are critical for Returns and Cash Operations features
-- **Component popup reusability** should be verified after Catalogue section build
-- **Color assignment for Catalogue** section needs design approval
+- **Component popup reusability** should now be verified (Catalogue section is complete)
 
 ---
 
@@ -128,6 +165,7 @@
 | Category | Total | Completed | In Progress | Pending |
 |----------|-------|-----------|-------------|---------|
 | Bugs/Issues | 3 | 3 | 0 | 0 |
-| Features | 4 | 0 | 0 | 4 |
-| E2E Checks | 5 | 0 | 0 | 5 |
-| **TOTAL** | **12** | **3** | **0** | **9** |
+| Features | 4 | 2 | 0 | 2 |
+| Hotfixes | 2 | 2 | 0 | 0 |
+| E2E Checks | 6 | 0 | 0 | 6 |
+| **TOTAL** | **15** | **7** | **0** | **8** |
