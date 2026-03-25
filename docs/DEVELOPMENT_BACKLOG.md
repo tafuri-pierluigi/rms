@@ -1,7 +1,7 @@
 # RMS Development Backlog
 
-**Last Updated:** 2026-03-25
-**Status:** Active Development
+**Last Updated:** 2026-03-26
+**Status:** Active Development (3 new items in staged commit)
 
 ---
 
@@ -41,6 +41,20 @@
   - Location: `rms-backend/src/modules/inventory/inventory.controller.ts`
   - Details: Reordered routes so specific `stock/store/:storeId/low` and `stock/store/:storeId` come before generic `stock/:variantId/:storeId`. Prevents NestJS from incorrectly binding "store" as a variantId UUID.
   - **Fixed:** March 25, 2026
+
+---
+
+## Backend Enhancements (In Progress)
+
+### Multi-Tenancy Enforcement
+- [x] **Add tenant_id to product_variants table**
+  - Location: `rms-backend` (commit: 73b3a73)
+  - Details: Added `tenant_id` UUID column to product_variants for enforcing multi-tenancy at data level. Includes backfill logic from parent products.
+  - Impact: Ensures product variants are properly scoped to tenant, preventing cross-tenant data leakage
+  - Docker integration: Added `db-init` service in docker-compose.yml for safe schema migration with conditional logic
+  - **Implemented:** March 26, 2026
+    - Backend: `feat: add tenant_id to product variants for multi-tenancy enforcement`
+    - Docker: Added db-init service with idempotent migration (ADD COLUMN IF NOT EXISTS, conditional NOT NULL constraint)
 
 ---
 
@@ -114,10 +128,10 @@
   - Scope: Full PO wizard flow
   - Status: Pending
 
-- [ ] **Popup view reusability in Catalogue section**
+- [x] **Popup view reusability in Catalogue section**
   - Details: Ensure same popup/modal components used across PO wizard AND Catalogue section (no code duplication)
   - Process consistency: All component creation follows identical UX patterns
-  - Status: Pending (depends on Catalogue section feature)
+  - **Fixed:** March 25, 2026 — Extracted 5 shared form-fields components (`BrandFormFields`, `ColorFormFields`, `CollectionFormFields`, `SupplierFormFields`, `SizeScaleFormFields`) into `src/components/app/catalog/forms/`. All 5 inline creation modals (PO wizard) and all 5 catalogue CRUD views now use the shared components via `v-model`. `SizeScaleFormFields` uses `showSizeTable` prop to split inline creation (PO wizard) from name/description-only creation (catalogue, which keeps its separate "Manage Sizes" modal).
   - Test coverage: All CRUD operations in both sections
 
 ### Permission Management & UI Visibility
@@ -151,12 +165,29 @@
   - Status: Pending
   - Complexity: Medium (involves permission store state, widget rendering, dynamic content filtering)
 
+- [ ] **Tenant isolation in product variants (multi-tenancy enforcement)**
+  - Details: Verify that product variants are properly isolated by tenant_id at the database and API level
+  - Scope:
+    - [ ] Product variants correctly associated with parent product's tenant_id
+    - [ ] API endpoints enforce tenant_id filtering (cannot access variants from other tenants)
+    - [ ] PO wizard can only see variants for products in the user's tenant
+    - [ ] Inventory/stock operations properly scoped by variant tenant_id
+    - [ ] db-init migration runs successfully and backfills existing data correctly
+  - Test scenarios:
+    - Create products in Tenant A, Tenant B; verify variants are isolated
+    - Non-SuperAdmin users cannot query/modify variants outside their tenant
+    - PO creation from Tenant A only sees variants from Tenant A's products
+    - Migration idempotency: running migration twice should not cause issues
+  - Status: Pending
+  - Complexity: Medium (touches database, API filtering, data isolation)
+
 ---
 
 ## Development Notes
 
+- **Multi-tenancy enforcement** is now database-level with tenant_id on product_variants; API filtering must be verified
 - **Stock impact calculations** are critical for Returns and Cash Operations features
-- **Component popup reusability** should now be verified (Catalogue section is complete)
+- **Component popup reusability** has been verified (Catalogue section is complete, shared form components extracted)
 
 ---
 
@@ -167,5 +198,6 @@
 | Bugs/Issues | 3 | 3 | 0 | 0 |
 | Features | 4 | 2 | 0 | 2 |
 | Hotfixes | 2 | 2 | 0 | 0 |
-| E2E Checks | 6 | 0 | 0 | 6 |
-| **TOTAL** | **15** | **7** | **0** | **8** |
+| Backend Enhancements | 1 | 1 | 0 | 0 |
+| E2E Checks | 7 | 1 | 0 | 6 |
+| **TOTAL** | **17** | **9** | **0** | **8** |

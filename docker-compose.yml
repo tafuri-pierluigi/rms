@@ -22,6 +22,42 @@ services:
   #   networks:
   #     - rms_network
 
+  db-init:
+    image: postgres:15-alpine
+    container_name: rms_db_init
+    restart: 'no'
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: ${DB_USERNAME:-postgres}
+      PGPASSWORD: ${DB_PASSWORD:-postgres}
+      PGDATABASE: ${DB_DATABASE:-rms_db}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rms_network
+    command: >
+      psql -c "
+        DO \$\$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'product_variants'
+          ) THEN
+            ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS tenant_id UUID;
+            UPDATE product_variants pv
+              SET tenant_id = p.tenant_id
+              FROM products p
+              WHERE p.id = pv.product_id AND pv.tenant_id IS NULL;
+            IF NOT EXISTS (SELECT 1 FROM product_variants WHERE tenant_id IS NULL) THEN
+              ALTER TABLE product_variants ALTER COLUMN tenant_id SET NOT NULL;
+            END IF;
+          END IF;
+        END
+        \$\$
+      "
+
   backend:
     build:
       context: ./rms-backend
@@ -50,8 +86,8 @@ services:
       RATE_LIMIT_TTL: ${RATE_LIMIT_TTL:-900}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     networks:
       - rms_network
 
