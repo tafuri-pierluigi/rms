@@ -82,9 +82,7 @@ npm run preview            # Preview production build
 
 ## Known Issues
 
-| ID | Issue |
-|----|-------|
-| BE-001 | Quota race condition — needs DB-level locking |
+None outstanding.
 
 ---
 
