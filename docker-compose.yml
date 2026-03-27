@@ -69,6 +69,8 @@ services:
   # =========================================================================
   # CADDY - Reverse proxy
   # Serves frontend from the shared volume populated by the frontend service.
+  # HTTPS automatico, HTTP/2+3 nativo, config semplice.
+  # Per usare Nginx: vedi nginx/ directory per la configurazione alternativa
   # =========================================================================
   caddy:
     image: caddy:2-alpine
