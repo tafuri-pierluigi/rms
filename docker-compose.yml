@@ -1,25 +1,13 @@
 services:
-  # =========================================================================
-  # FRONTEND - Builds the Vue app and deposits files into frontend_dist volume.
-  # Runs once at startup (init container pattern), then exits cleanly.
-  # Caddy reads from the same volume read-only.
-  # =========================================================================
-  frontend:
-    build:
-      context: ./rms-frontend
-      dockerfile: Dockerfile
-    container_name: rms_frontend_build
-    volumes:
-      - frontend_dist:/srv/frontend
-
   backend:
     build:
       context: ./rms-backend
       dockerfile: Dockerfile
     container_name: rms_backend
     restart: unless-stopped
-    ports:
-      - '${BACKEND_PORT:-3000}:3000'
+    # porta non esposta sull'host in produzione - Caddy raggiunge il backend via rete Docker
+    # ports:
+    #   - '${BACKEND_PORT:-3000}:3000'
     healthcheck:
       test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/health || exit 1']
       interval: 10s
@@ -39,7 +27,8 @@ services:
       REFRESH_TOKEN_EXPIRATION: ${REFRESH_TOKEN_EXPIRATION:-7d}
       RATE_LIMIT_TTL: ${RATE_LIMIT_TTL:-900}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://cremisi.shop,https://admin.cremisi.shop}
+      SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
@@ -63,17 +52,14 @@ services:
       retries: 5
     networks:
       - rms_network
-    ports:
-      - '${DB_PORT:-5432}:5432'
+    # porta non esposta sull'host in produzione - solo accesso interno Docker
+    # ports:
+    #   - '${DB_PORT:-5432}:5432'
 
-  # =========================================================================
-  # CADDY - Reverse proxy
-  # Serves frontend from the shared volume populated by the frontend service.
-  # HTTPS automatico, HTTP/2+3 nativo, config semplice.
-  # Per usare Nginx: vedi nginx/ directory per la configurazione alternativa
-  # =========================================================================
   caddy:
-    image: caddy:2-alpine
+    build:
+      context: .
+      dockerfile: caddy/Dockerfile
     container_name: rms_caddy
     restart: unless-stopped
     ports:
@@ -82,12 +68,9 @@ services:
       - '${CADDY_HTTPS_PORT:-443}:443/udp'  # HTTP/3 (QUIC)
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - frontend_dist:/srv/frontend:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      frontend:
-        condition: service_completed_successfully
       backend:
         condition: service_healthy
     networks:
@@ -99,8 +82,6 @@ networks:
 
 volumes:
   postgres_data:
-    driver: local
-  frontend_dist:
     driver: local
   caddy_data:
     driver: local
