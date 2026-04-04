@@ -6,6 +6,6 @@ RUN npm ci
 COPY rms-frontend/ .
 RUN npm run build
 
-# Stage 2: Caddy with compiled frontend baked in
+# Stage 2: Final image
 FROM caddy:2-alpine
 COPY --from=frontend-builder /app/dist /srv/frontend
