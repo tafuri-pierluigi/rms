@@ -12,7 +12,7 @@ Guidance for Claude Code working on RMS (Resource Management System).
 | Backend | NestJS 11.x + TypeORM 0.3.x |
 | Frontend | Vue 3 + Vite 7.2.x + Pinia |
 | i18n | vue-i18n 9.x (EN/IT) |
-| Proxy | Caddy 2 (Nginx alternative in `nginx/`) |
+| Proxy | Caddy 2 |
 | DB | PostgreSQL 15 |
 
 ## Architecture
@@ -78,7 +78,7 @@ npm run preview            # Preview production build
 
 ## Test Credentials (post-seed)
 
-`superadmin@system.com` / `admin@acme.com` / `user@acme.com` — all `Password123!`
+`superadmin@system.com` (password da `SUPERADMIN_PASSWORD` env, default `Password123!`) / `admin@acme.com` (`Password123!`)
 
 ## Known Issues
 
