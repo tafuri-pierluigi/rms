@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Guidance for Claude Code working on RMS (Resource Management System).
+Guidance for Claude Code working on RMS (Retail Management System).
 
 > **Last updated:** March 24, 2026 | Frontend redesign complete (Design System v1.0) | All business modules complete
 > **For architecture deep dives:** See `rms-backend/CLAUDE.md` (submodule) or spawn Haiku 4.5 subagent for source files.
