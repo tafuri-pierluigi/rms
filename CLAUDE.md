@@ -2,7 +2,7 @@
 
 Guidance for Claude Code working on RMS (Retail Management System).
 
-> **Last updated:** March 24, 2026 | Frontend redesign complete (Design System v1.0) | All business modules complete
+> **Last updated:** April 30, 2026 | All business modules complete | Validation + enum fixes (sales, customers, PO)
 > **For architecture deep dives:** See `rms-backend/CLAUDE.md` (submodule) or spawn Haiku 4.5 subagent for source files.
 
 ## Stack
@@ -64,6 +64,15 @@ npm run build              # Includes vue-tsc type check + Vite build
 npm run preview            # Preview production build
 ```
 
+**E2E (Playwright)**
+```bash
+cd e2e
+npm test                   # Headless Chromium against https://cremisi.shop
+npm run test:ui            # Interactive UI mode
+npm run test:headed        # Headed browser
+BASE_URL=http://localhost npm test  # Run against local dev
+```
+
 ## Key Files
 
 | Need | Path |
@@ -75,10 +84,22 @@ npm run preview            # Preview production build
 | Navigation | `rms-frontend/src/config/navigation.ts` |
 | Vite + i18n | `rms-frontend/vite.config.ts` |
 | Docker proxy | `caddy/Dockerfile` + `caddy/Caddyfile` |
+| E2E tests | `e2e/tests/sales-workflow.spec.ts` |
 
 ## Test Credentials (post-seed)
 
 `superadmin@system.com` (password da `SUPERADMIN_PASSWORD` env, default `Password123!`) / `admin@acme.com` (`Password123!`)
+
+## Enum Conventions (CRITICAL)
+
+Frontend types must mirror backend enum string values exactly — mismatches cause 400 errors silently until runtime.
+
+| Enum | Values |
+|------|--------|
+| `PaymentMethod` | `Cash`, `Card`, `BankTransfer`, `MobilePayment`, `GiftCard`, `StoreCredit` |
+| `CustomerGender` | `Male`, `Female`, `Other`, `PreferNotToSay` |
+
+i18n keys for these enums use the same PascalCase values (e.g. `sales.paymentMethods.Cash`, `customers.genderPreferNotToSay`).
 
 ## Known Issues
 
