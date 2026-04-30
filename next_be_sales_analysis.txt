@@ -1,0 +1,17 @@
+  Differenze da tenere a mente (il vecchio aveva cose utili che mancano):                                         
+  - Store — mancano StoreType (Retail/Warehouse), CanProcessSales (flag cassa), indirizzo completo, e il vincolo  
+  UNIQUE(tenantId, code) che è più corretto del UNIQUE(code) globale attuale                                      
+                                                                                                                  
+  Blueprint per i moduli da implementare — usabili quasi 1:1 con trasformazioni meccaniche (SERIAL→UUID,          
+  PascalCase→snake_case, aggiungere tenantId):                                                                    
+  - Customers — tutti i campi già buoni
+  - Sales/SaleItems/Payments — nota su SalespersonID (distinto da cassiere), flag antifrode, campi carta POS      
+  - Returns/ReturnItems — usabile direttamente                                                              
+  - StoreTransfers — usabile, mantenere il CHECK FromStore != ToStore                                             
+  - SupplierReturns — usabile                                        
+  - StoreCreditTransactions — il pezzo migliore: event sourcing del credito con BalanceAfter, molto più solido di 
+  una semplice colonna balance                                                                                   
+  - Indici di ricerca (varchar_pattern_ops per ILIKE) — da aggiungere quando si implementano customers/sales      
+                                                                                                            
+  Sintesi: le trasformazioni da fare su ogni entity sono sempre le stesse, la logica di business del vecchio      
+  schema è solida e riutilizzabile.     
