@@ -1,0 +1,46 @@
+RAGIONAMENTO: GENERALIZZAZIONE DEI TIPI DI APPROVVIGIONAMENTO
+Data: 2026-05-07
+
+== SITUAZIONE ATTUALE ==
+L'unico modo per caricare stock è tramite Purchase Order (PO) da fornitore.
+I resi fornitore sono associati a uno o più PO dello stesso fornitore.
+
+== IL PROBLEMA FUTURO ==
+In futuro potrebbero esistere altri "documenti di approvvigionamento":
+  - Primo carico (stock iniziale senza PO formale)
+  - Conto vendita / consignment
+  - Fattura diretta (acquisto spot senza ordine preventivo)
+
+Tutti questi hanno in comune: arrivano da un fornitore e portano stock in un negozio.
+Anche i resi fornitore dovrebbero poter fare riferimento a questi documenti.
+
+== COSA NON RIENTRA NEI RESI FORNITORE ==
+Il "trasloco" (store-to-store transfer) NON è approvvigionamento da fornitore.
+Un reso di merce trasloco sarebbe un "reverse store transfer", entità separata.
+
+== OPZIONE ARCHITETTURALE DISCUSSA: SupplyDocument ==
+Modellare un concetto generico di "documento di carico da fornitore":
+
+  SupplyDocument {
+    id, type: 'PurchaseOrder' | 'InitialLoad' | 'Consignment' | ...
+    supplierId, storeId, date
+    items[]
+  }
+
+Il PurchaseOrder diventerebbe un tipo specifico di SupplyDocument.
+Il reso farebbe riferimento a SupplyDocument[] dello stesso fornitore.
+
+== DECISIONE PRESA ==
+Fase 1 (ora): supporto resi multi-PO, stesso fornitore.
+  - Backend: purchaseOrderIds[] nel DTO, relazione ManyToMany SupplierReturn <-> PurchaseOrder
+  - Ogni item del reso referenzia opzionalmente il purchaseOrderItemId per cost auto-fill
+
+Fase 2 (quando serve): se/quando si aggiungono "primo carico" o simili,
+  valutare se modellarli come PurchaseOrder con un campo "type" (più semplice)
+  oppure migrare a un pattern SupplyDocument polimorfico.
+  A quel punto il meccanismo di reso sarà già consolidato.
+
+== NOTE ==
+- Over-engineering ora è rischioso: "primo carico" potrebbe diventare un PO con type diverso
+- Il pattern a due fasi permette di non bloccare la feature attuale
+- La constraint "stesso fornitore per tutti i PO" si valida lato frontend (e idealmente anche BE)
