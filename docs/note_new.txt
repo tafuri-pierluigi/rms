@@ -1,0 +1,41 @@
+Vendita:
+    Cassa
+    Resi/Buoni (*1)(gestione economica/quantità) -> forte e affidabile)
+    Clienti (*2)
+
+Magazzino:
+    Inventario
+    PO
+    Fornitori (*2)
+    Resi fornitori (*1)
+    Movimenti
+
+Catalogo:
+    Prodotti
+    Attributi (nome va bene?)
+        Brand, Collezioni, Colori, Scale taglie, Tags
+
+Admin:
+    Negozio
+    Utenti
+    Ruoli
+
+
+NEW:
+Feat: Filtri e ordinamento tabelle
+C'è gia mezza attività: Fix/Feat: workflow ordine/vendita con buoni/resi
+
+Lavoro sui dati e le strutture, le operazioni, primi filtri/ordinamenti
+
+Generalizzazione componenti FE:
+Header
+Footer (home)
+Tabelle
+Dettaglio po, prodotto, vendita
+Bottoni
+Form/Input
+Tab (the-header)
+Progress Bar / Breadcrumb
+Searchbar (global-search)
+Sidebar
+Home
