@@ -11,6 +11,11 @@
 # Main App: cremisi.shop (tenant users)
 # =============================================================================
 http://cremisi.shop {
+	log {
+		output stdout
+		format console
+	}
+
 	encode gzip zstd
 
 	header {
@@ -41,6 +46,11 @@ http://cremisi.shop {
 # SuperAdmin Area: admin.cremisi.shop
 # =============================================================================
 http://admin.cremisi.shop {
+	log {
+		output stdout
+		format console
+	}
+
 	encode gzip zstd
 
 	header {
@@ -73,6 +83,11 @@ http://admin.cremisi.shop {
 # Tenant Area: {slug}.cremisi.shop
 # =============================================================================
 http://*.cremisi.shop {
+	log {
+		output stdout
+		format console
+	}
+
 	encode gzip zstd
 
 	header {
