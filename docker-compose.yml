@@ -29,9 +29,38 @@ services:
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://cremisi.shop,https://admin.cremisi.shop}
       SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET:-rms-images}
+      MINIO_PUBLIC_BASE_URL: ${MINIO_PUBLIC_BASE_URL}
     depends_on:
       postgres:
         condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - rms_network
+
+  minio:
+    image: minio/minio:latest
+    container_name: rms_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # ports:
+    #   - '9001:9001'  # console MinIO (sviluppo)
     networks:
       - rms_network
 
@@ -86,4 +115,6 @@ volumes:
   caddy_data:
     driver: local
   caddy_config:
+    driver: local
+  minio_data:
     driver: local
