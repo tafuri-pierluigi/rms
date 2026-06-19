@@ -67,7 +67,7 @@ services:
       REFRESH_TOKEN_EXPIRATION: ${REFRESH_TOKEN_EXPIRATION:-7d}
       RATE_LIMIT_TTL: ${RATE_LIMIT_TTL:-900}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-1000}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://local.cremisi.shop:8080,http://admin.local.cremisi.shop:8080}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://local.cremisi.shop:8443}
       SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:-Password123!}
       MINIO_ENDPOINT: minio
       MINIO_PORT: 9000
@@ -75,7 +75,7 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin123}
       MINIO_BUCKET: ${MINIO_BUCKET:-rms-images}
-      MINIO_PUBLIC_BASE_URL: ${MINIO_PUBLIC_BASE_URL:-http://local.cremisi.shop:8080/files}
+      MINIO_PUBLIC_BASE_URL: ${MINIO_PUBLIC_BASE_URL:-https://local.cremisi.shop:8443/files}
     depends_on:
       postgres:
         condition: service_healthy
@@ -91,7 +91,9 @@ services:
     container_name: rms_test_caddy
     restart: unless-stopped
     ports:
-      - '8080:80'
+      - '8443:443'
+    environment:
+      BASE_DOMAIN: ${BASE_DOMAIN:-local.cremisi.shop}
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

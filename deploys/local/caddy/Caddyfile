@@ -1,8 +1,4 @@
-{
-	auto_https off
-}
-
-http://local.cremisi.shop {
+{$BASE_DOMAIN} {
 	log {
 		output stdout
 		format console
@@ -25,5 +21,6 @@ http://local.cremisi.shop {
 		try_files {path} /index.html
 		file_server
 	}
-}
 
+	tls internal
+}

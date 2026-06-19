@@ -87,6 +87,8 @@ services:
     restart: unless-stopped
     ports:
       - '80:80'
+    environment:
+      BASE_DOMAIN: ${BASE_DOMAIN:-cremisi.shop}
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

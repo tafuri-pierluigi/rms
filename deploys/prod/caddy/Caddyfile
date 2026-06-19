@@ -10,7 +10,7 @@
 # =============================================================================
 # Main App: cremisi.shop (tenant users)
 # =============================================================================
-http://cremisi.shop {
+http://{$BASE_DOMAIN} {
 	log {
 		output stdout
 		format console
