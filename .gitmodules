@@ -1,6 +1,6 @@
 [submodule "rms-frontend"]
-	path = rms-frontend
+	path = modules/frontend
 	url = https://github.com/tafuri-pierluigi/rms-frontend.git
 [submodule "rms-backend"]
-	path = rms-backend
+	path = modules/backend
 	url = https://github.com/tafuri-pierluigi/rms-backend.git
