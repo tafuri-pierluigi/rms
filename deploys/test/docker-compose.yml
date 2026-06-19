@@ -1,0 +1,113 @@
+name: rms_test
+
+# Stack completo per collaudo locale (full build, include caddy).
+# Accessibile su http://localhost:8080
+# Avviare con: docker compose up -d --build
+# Seed:        docker compose exec backend npm run seed
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: rms_test_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_DATABASE:-rms_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-postgres}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rms_net
+
+  minio:
+    image: minio/minio:latest
+    container_name: rms_test_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin123}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rms_net
+
+  backend:
+    build:
+      context: ../../modules/backend
+      dockerfile: Dockerfile
+    container_name: rms_test_backend
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_DATABASE: ${DB_DATABASE:-rms_db}
+      JWT_SECRET: ${JWT_SECRET:-test_secret_change_me_32_chars_min}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-15m}
+      REFRESH_TOKEN_EXPIRATION: ${REFRESH_TOKEN_EXPIRATION:-7d}
+      RATE_LIMIT_TTL: ${RATE_LIMIT_TTL:-900}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-1000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://local.cremisi.shop:8080,http://admin.local.cremisi.shop:8080}
+      SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:-Password123!}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin123}
+      MINIO_BUCKET: ${MINIO_BUCKET:-rms-images}
+      MINIO_PUBLIC_BASE_URL: ${MINIO_PUBLIC_BASE_URL:-http://local.cremisi.shop:8080/files}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - rms_net
+
+  caddy:
+    build:
+      context: ../..
+      dockerfile: caddy/Dockerfile
+    container_name: rms_test_caddy
+    restart: unless-stopped
+    ports:
+      - '8080:80'
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - rms_net
+
+networks:
+  rms_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  minio_data:
+  caddy_data:
+  caddy_config:
