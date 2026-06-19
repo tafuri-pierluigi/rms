@@ -1,0 +1,24 @@
+in PO:
+
+se ho già inserito un prodotto e faccio aggiungi un altro, la schermata della bozza è stretta in verticale.
+
+il prezzo non viene preso nel form nonostante io dia invio e venga calcolato il prezzo di vendita con il ricarico, poi se aggiungo all'ordine viene messo a 0 e devo rimetterlo facendo la modifica inline.
+
+in reso fornitore, si ouò rendere solo la merce che è arrivata (sia in ordine parzialmente ricevuto che in completamente ricevuto)
+
+rettifica può portare una rettifica del denaro / genrare una transazione* di rimborso
+
+*-> gestendo per bene le transazioni*, dovrà essere possibile oltre ad avere un inventario sempre aggiornato e allineato a livello di quantità, anche avere un conto totale dei soldi dovuti, a credito e totali (di giornata/mese/Anno)…
+
+*-> sistema deve essere a prova di bomba in merito a concorrenza richieste (race condition) e consistenza generale dei dati. altri eventuali cose da gestire per garantire ciò?
+
+-> manca dettaglio reso fornitore con i prodotti resi / soldi rimborsati
+
+menu non è usabile così perché all'hover su un esagono/modulo, si sposta la sua icona e se non ci sei più sopra col mouse (Ad esempio se ha solo una sottovoce e molte si sposta di più) allora si richiude. inoltre bisogna chiuderla di più sul bordo per poi all'avvicinarsi o al click del logo su aprirla come ora con gli esagoni in vista. così il resto dello schermo è dedicato esclusivamente alle attività intramodulo (tabelle, form si espandono così in orizzontale al 100%)
+
+il prezzo se vado a vendere un prodotto è a 0 anche se in dettaglio ordine ho il costo originale (perciò col ricarico selezionato anche il prezzo di vendita…). vediamo se il be ha bisogno di modifica allo stesso modo per rispecchiare il fe.
+
+il prezzo deve essere tuttavia sempre modificabile manualmente, o essere già stato modificato 
+
+ho ricevuto e reso della roba di un ordine e poi l'ho messo in stato cancelled -> la merce parzialmente ricevuta va tenuta in conto o scartata? si fa un popup?
+

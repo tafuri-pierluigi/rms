@@ -10,6 +10,7 @@
 Il prezzo di costo viene calcolato correttamente nel form bozza (con ricarico → prezzo di vendita), ma quando si fa "Aggiungi all'ordine" il valore viene perso e la variante viene inserita a `costPrice: 0`. L'utente deve correggerlo via modifica inline.
 Stesso sintomo in fase di vendita: il prezzo di un prodotto appare a 0 nella cassa anche se l'ordine di acquisto ricevuto ha il costo originale con ricarico.
 **Da verificare:** se dipende solo dal FE o anche dal BE (variante con `sellingPrice` non aggiornato dopo receive).
+**Requisito:** il prezzo deve essere sempre modificabile manualmente dall'utente, indipendentemente dal valore calcolato automaticamente.
 
 ### PO — Form bozza schiacciato in verticale con prodotti già presenti
 Quando è già stato aggiunto almeno un prodotto e si apre la bozza per aggiungerne un secondo, il pannello della bozza risulta troppo stretto verticalmente.
@@ -51,7 +52,12 @@ Quando si passa il mouse su un esagono/modulo nella home, l'icona si sposta legg
 
 ### Race condition e consistenza dati
 Il sistema deve essere robusto rispetto a richieste concorrenti (es. due vendite simultanee sullo stesso articolo con 1 pezzo in stock). 
-**Da analizzare:** transazioni DB con locking pessimistico o ottimistico sulle operazioni di stock, idempotency key sulle vendite, retry logic sul FE.
+**Da implementare:**
+- `SELECT FOR UPDATE` (locking pessimistico) sulle righe di stock durante vendite/receive
+- Transazioni DB atomiche su operazioni multi-tabella (receive: aggiorna PO + crea InventoryMovement + aggiorna stock — tutto o niente)
+- Idempotency key sulle vendite (evita doppio invio da FE in caso di timeout/retry)
+- Constraint DB `quantity >= 0` come ultima difesa a livello DB
+- Versioning ottimistico (`version` column) valutare quando ci sono più casse concorrenti
 
 ### Paginazione lato backend
 Attualmente il FE carica tutte le entità in una sola chiamata. Spostare `page`/`limit` al BE sulle entity principali (products, purchase-orders, customers, transactions).
