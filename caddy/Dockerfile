@@ -1,9 +1,9 @@
 # Stage 1: Build frontend
 FROM node:22-alpine AS frontend-builder
 WORKDIR /app
-COPY rms-frontend/package*.json ./
+COPY modules/frontend/package*.json ./
 RUN npm ci
-COPY rms-frontend/ .
+COPY modules/frontend/ .
 RUN npm run build
 
 # Stage 2: Final image

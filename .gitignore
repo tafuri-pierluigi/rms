@@ -1,4 +1,5 @@
 .env
+deploys/**/.env
 *.log
 
 # Claude Code - istruzioni personali (non committare)
