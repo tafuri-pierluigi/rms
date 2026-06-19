@@ -38,7 +38,7 @@
   - **Fixed:** March 25, 2026
 
 - [x] **Route ordering — prevent UUID misinterpretation**
-  - Location: `rms-backend/src/modules/inventory/inventory.controller.ts`
+  - Location: `modules/backend/src/modules/inventory/inventory.controller.ts`
   - Details: Reordered routes so specific `stock/store/:storeId/low` and `stock/store/:storeId` come before generic `stock/:variantId/:storeId`. Prevents NestJS from incorrectly binding "store" as a variantId UUID.
   - **Fixed:** March 25, 2026
 
@@ -48,7 +48,7 @@
 
 ### Multi-Tenancy Enforcement
 - [x] **Add tenant_id to product_variants table**
-  - Location: `rms-backend` (commit: 73b3a73)
+  - Location: `modules/backend` (commit: 73b3a73)
   - Details: Added `tenant_id` UUID column to product_variants for enforcing multi-tenancy at data level. Includes backfill logic from parent products.
   - Impact: Ensures product variants are properly scoped to tenant, preventing cross-tenant data leakage
   - Docker integration: Added `db-init` service in docker-compose.yml for safe schema migration with conditional logic

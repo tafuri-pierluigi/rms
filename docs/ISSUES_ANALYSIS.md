@@ -40,7 +40,7 @@
 #### SEC-003: Token Storage in localStorage
 - **Severità:** 🟠 HIGH
 - **Stato:** Ancora presente
-- **File:** `rms-frontend/src/stores/auth.store.ts` righe 7-8, 106-107, 131-132
+- **File:** `modules/frontend/src/stores/auth.store.ts` righe 7-8, 106-107, 131-132
 - **Codice attuale:**
   ```typescript
   const accessToken = ref<string | null>(localStorage.getItem('accessToken'))
@@ -58,7 +58,7 @@
 #### SEC-004: JWT Parsing Senza Validazione
 - **Severità:** 🟡 MEDIUM (rischio accettabile)
 - **Stato:** Presente ma mitigato lato server
-- **File:** `rms-frontend/src/stores/auth.store.ts` righe 68-87
+- **File:** `modules/frontend/src/stores/auth.store.ts` righe 68-87
 - **Nota:** `parseJwt()` fa solo base64 decode del payload, nessuna verifica firma. Accettabile perché il JWT viene validato server-side ad ogni request. Il fallback a `{ sub: '', email: '', ... }` gestisce correttamente i token malformati.
 
 ### Bug Backend
@@ -66,7 +66,7 @@
 #### BE-001: Race Condition Quota Store
 - **Severità:** 🔴 CRITICAL
 - **Stato:** Ancora presente (protezione solo applicativa, non DB)
-- **File:** `rms-backend/src/stores/stores.service.ts` righe 48-71
+- **File:** `modules/backend/src/stores/stores.service.ts` righe 48-71
 - **Codice attuale:**
   ```typescript
   private async checkStoreQuota(tenantId: string): Promise<void> {
@@ -84,13 +84,13 @@
 #### BE-002: Race Condition Quota User
 - **Severità:** 🔴 CRITICAL
 - **Stato:** Ancora presente (stesso pattern di BE-001)
-- **File:** `rms-backend/src/users/users.service.ts` righe 32-60
+- **File:** `modules/backend/src/users/users.service.ts` righe 32-60
 - **Fix:** Stesso approccio di BE-001.
 
 #### BE-007: Type Casting con `as any`
 - **Severità:** 🟢 LOW
 - **Stato:** Presente, due istanze
-- **File:** `rms-backend/src/auth/auth.service.ts` righe 173-174
+- **File:** `modules/backend/src/auth/auth.service.ts` righe 173-174
   ```typescript
   const accessToken = this.jwtService.sign(payload as any, {
     expiresIn: (this.configService.get<string>('JWT_EXPIRATION') || '15m') as any,
@@ -109,7 +109,7 @@
 #### FE-007: Silent Errors in Interceptor (401)
 - **Severità:** 🟡 MEDIUM
 - **Stato:** Ancora presente
-- **File:** `rms-frontend/src/api/axios.ts` righe 34-57
+- **File:** `modules/frontend/src/api/axios.ts` righe 34-57
   ```typescript
   } catch {
     // Refresh failed: nessun feedback, redirect diretto
@@ -132,7 +132,7 @@
 #### FE-010: Email Validation Regex Permissiva
 - **Severità:** 🟢 LOW
 - **Stato:** Parzialmente presente
-- **File:** `rms-frontend/src/components/users/UserForm.vue` riga 93
+- **File:** `modules/frontend/src/components/users/UserForm.vue` riga 93
   ```typescript
   !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email)
   ```
@@ -156,7 +156,7 @@
 #### INC-001: Risposta Login vs Refresh Diversa
 - **Severità:** 🟡 MEDIUM
 - **Stato:** Ancora presente (verificato nel codice)
-- **File:** `rms-backend/src/auth/auth.service.ts`
+- **File:** `modules/backend/src/auth/auth.service.ts`
   ```typescript
   // login() ritorna:
   { user: sanitizeUser(user), accessToken, refreshToken }
@@ -180,7 +180,7 @@
 #### UX-005: Nessun Feedback Logout
 - **Severità:** 🟢 LOW
 - **Stato:** Logout senza toast
-- **File:** `rms-frontend/src/components/layout/TheHeader.vue` righe 17-25
+- **File:** `modules/frontend/src/components/layout/TheHeader.vue` righe 17-25
   ```typescript
   async function handleLogout() {
     await authStore.logout()
@@ -200,7 +200,7 @@
 #### DEBT-003: Nessun Error Boundary Vue
 - **Severità:** 🟡 MEDIUM
 - **Stato:** Non implementato
-- **File:** `rms-frontend/src/main.ts` — nessun `app.config.errorHandler` o `onErrorCaptured` in App.vue
+- **File:** `modules/frontend/src/main.ts` — nessun `app.config.errorHandler` o `onErrorCaptured` in App.vue
 - **Fix:** Aggiungere global error handler per evitare white screen su errori runtime.
 
 #### DEBT-006: Missing API Versioning

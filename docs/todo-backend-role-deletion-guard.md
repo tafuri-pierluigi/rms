@@ -8,7 +8,7 @@ Un ruolo custom non deve poter essere cancellato se almeno un utente lo possiede
 
 ## Fix da fare
 
-In `rms-backend/src/roles/roles.service.ts`, prima di `this.roleRepository.delete(id)`:
+In `modules/backend/src/roles/roles.service.ts`, prima di `this.roleRepository.delete(id)`:
 
 ```typescript
 const usersWithRole = await this.userRepository.count({

@@ -3,7 +3,7 @@
 Guidance for Claude Code working on RMS (Retail Management System).
 
 > **Last updated:** April 30, 2026 | All business modules complete | Validation + enum fixes (sales, customers, PO)
-> **For architecture deep dives:** See `rms-backend/CLAUDE.md` (submodule) or spawn Haiku 4.5 subagent for source files.
+> **For architecture deep dives:** See `modules/backend/CLAUDE.md` (submodule) or spawn Haiku 4.5 subagent for source files.
 
 ## Stack
 
@@ -40,15 +40,29 @@ Guidance for Claude Code working on RMS (Retail Management System).
 
 ## Commands
 
-**Dev (full stack)**
+**Dev locale** (postgres + backend + minio, frontend separato con hot-reload)
 ```bash
-docker compose up -d && docker compose exec backend npm run seed  # http://localhost
-cd rms-frontend && npm run dev  # http://localhost:5173 (hot reload, proxies /api to backend)
+cd deploys/local && docker compose up -d
+docker compose exec rms_local_backend npm run seed
+cd ../../modules/frontend && npm run dev   # http://localhost:5173
+```
+
+**Collaudo** (stack completo, frontend buildato, http://localhost:8080)
+```bash
+cd deploys/test && docker compose up -d --build
+docker compose exec rms_test_backend npm run seed
+```
+
+**Produzione** (cremisi.shop via Cloudflare Tunnel)
+```bash
+cd deploys/prod && docker compose up -d --build
+docker compose exec rms_prod_backend npm run seed   # solo al primo avvio
+./backup.sh                                         # backup manuale
 ```
 
 **Backend**
 ```bash
-cd rms-backend
+cd modules/backend
 npm run start:dev          # Watch mode
 npm run test               # Jest unit tests
 npm run test:e2e           # E2E tests
@@ -59,7 +73,7 @@ npm run seed               # Populate DB (idempotent)
 
 **Frontend**
 ```bash
-cd rms-frontend
+cd modules/frontend
 npm run build              # Includes vue-tsc type check + Vite build
 npm run preview            # Preview production build
 ```
@@ -77,13 +91,16 @@ BASE_URL=http://localhost npm test  # Run against local dev
 
 | Need | Path |
 |------|------|
-| Backend auth/guards | `rms-backend/CLAUDE.md` (see submodule) |
-| Styling system | `rms-frontend/src/styles/main.scss` |
-| Layout | `rms-frontend/src/components/layout/TheLayout.vue` |
+| Backend auth/guards | `modules/backend/CLAUDE.md` (see submodule) |
+| Styling system | `modules/frontend/src/styles/main.scss` |
+| Layout | `modules/frontend/src/components/layout/TheLayout.vue` |
 | Design tokens | `RMS-DESIGN-SYSTEM.md` |
-| Navigation | `rms-frontend/src/config/navigation.ts` |
-| Vite + i18n | `rms-frontend/vite.config.ts` |
-| Docker proxy | `caddy/Dockerfile` + `caddy/Caddyfile` |
+| Navigation | `modules/frontend/src/config/navigation.ts` |
+| Vite + i18n | `modules/frontend/vite.config.ts` |
+| Docker compose | `deploys/{prod,local,test}/docker-compose.yml` |
+| Caddy build | `caddy/Dockerfile` (build context: root) |
+| Caddy config | `deploys/{prod,test}/caddy/Caddyfile` |
+| Backup prod | `deploys/prod/backup.sh` → `/home/pier/backups/rms/` |
 | E2E tests | `e2e/tests/sales-workflow.spec.ts` |
 
 ## Test Credentials (post-seed)
@@ -107,4 +124,4 @@ None outstanding.
 
 ---
 
-*Submodules: `rms-backend/` and `rms-frontend/` are git submodules. Update with `git submodule update --recursive`.*
+*Submodules: `modules/backend/` and `modules/frontend/` are git submodules. Update with `git submodule update --recursive`.*
