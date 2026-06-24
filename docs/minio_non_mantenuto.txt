@@ -1,0 +1,60 @@
+● Confermato. Ecco la situazione completa:
+
+  Cosa è successo a MinIO
+
+  - 12 febbraio 2026: README GitHub aggiornato con "THIS REPOSITORY IS NO LONGER MAINTAINED"
+  - 25 aprile 2026: repository GitHub archiviato
+  - La CE è ora solo sorgente, niente binary pre-compilati, niente nuove feature, niente patch di
+  sicurezza
+  - MinIO spinge verso il loro prodotto commerciale AIStor
+
+  L'immagine minio/minio:latest che usi in prod gira ancora (è già compilata), ma non riceverà più
+  aggiornamenti di sicurezza.
+
+  ---
+  Analisi delle alternative per questo progetto
+
+  Il tuo caso d'uso è semplice: single-node Docker Compose, solo immagini prodotto, accesso
+  pubblico in lettura via Caddy. Il backend usa il pacchetto minio npm che è un puro S3 client —
+  funziona con qualsiasi storage S3-compatibile senza toccare codice.
+
+  ┌──────────────────┬─────────────────────────┬────────────────────────────────┬───────────┐
+  │                 │        Garage        │          SeaweedFS           │      RustFS      │
+  ├─────────────────┼──────────────────────┼──────────────────────────────┼──────────────────┤
+  │ Licenza         │ AGPL-3.0             │ Apache 2.0                   │ Apache 2.0       │
+  ├──────────────────┼──────────────────────┼─────────────────────────────┼──────────────────┤
+  │ Maturità         │ ★★★★ (2019,          │ ★★★★★ (2012, usato da       │ ★★ (alpha)       │
+  │                  │ prod-stable)         │ Kubeflow)                   │                  │
+  ├──────────────────┼──────────────────────┼─────────────────────────────┼──────────────────┤
+  │ Semplicità       │ ✅ singolo container │ ⚠️  master + volume + filer  │ ✅ singolo       │
+  │ Docker           │                      │ + gateway                   │ container        │
+  ├──────────────────┼──────────────────────┼─────────────────────────────┼──────────────────┤
+  │ S3 API compat.   │ ✅ completa          │ ✅ completa                 │ ✅ (in progress) │
+  ├──────────────────┼──────────────────────┼─────────────────────────────┼──────────────────┤
+  │ Web console      │ ❌                   │ ✅                          │ ✅               │
+  ├──────────────────┼──────────────────────┼─────────────────────────────┼──────────────────┤
+  │ Fit per questo   │ ottimo               │ eccessivo                   │ non ancora       │
+  │ stack            │                      │                             │                  │
+  └──────────────────┴──────────────────────┴─────────────────────────────┴──────────────────┘
+
+  ---
+  Raccomandazione
+
+  Garage per questo progetto. SeaweedFS è più maturo ma ha un'architettura distribuita
+  multi-processo che è overkill per un single-node con poche immagini. Garage è letteralmente "il
+  sostituto di MinIO per chi usava MinIO come un semplice blob store".
+
+  La migrazione sarebbe:
+  1. Swap minio/minio:latest → dxflrs/garage nel compose
+  2. Adattare le env var (diversa config, non più MINIO_ROOT_USER ma un file toml)
+  3. Bucket policy pubblica → configurazione leggermente diversa
+  4. Zero modifiche al backend (stessa S3 API)
+
+  Vuoi che lo faccia?
+
+  Sources:
+  - MinIO Is Done With Open Source, What Are Your Options?
+  - MinIO CE in 2026: Retired Upstream, Source-Only, and What to Use
+  - MinIO GitHub Repository in Maintenance Mode: What's Next?
+  - Self-Hosted S3 Storage in 2026: RustFS, SeaweedFS, Garage, or Ceph?
+  - MinIO Alternatives 2026: SeaweedFS, Garage, Ceph Compared
