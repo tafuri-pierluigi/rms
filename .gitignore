@@ -12,3 +12,8 @@ node_modules
 e2e/test-results/
 e2e/playwright-report/
 .playwright-mcp/
+
+# Materiale di analisi Atelier (terze parti / lavoro locale, non committare)
+atelier.html
+copy_Atelier_site.txt
+docs/Analisi_Atelier/
